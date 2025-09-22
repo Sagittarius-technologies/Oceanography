@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Target, Database, Search, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Database, Search, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../../ui/Index';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
@@ -16,119 +16,12 @@ import {
 import ProcessFlowDiagram from './ProcessFlowDiagram';
 import InteractiveDiagram from './InteractiveDiagram';
 import DnaLoader from './Dnaloading';
-
-type MatchingStep = {
-  title: string;
-  description: string;
-  details?: string;
-};
-
-type BlastResult = {
-  identity: number;
-  coverage: number;
-  evalue: number;
-  species: string;
-};
-
-type DiagramComponent = {
-  x: number;
-  y: number;
-  label: string;
-  color?: string;
-  hoverColor?: string;
-  icon?: React.ComponentType<any>;
-  description?: string;
-  details?: string;
-};
+import matchingSteps from './MatchingSteps';
+import blastResults from './blastResult';
+import diagramComponents from './diagramComponents'
 
 const SequenceMatching: React.FC = (): JSX.Element => {
-  const matchingSteps: MatchingStep[] = [
-    {
-      title: 'Query Submission',
-      description: 'Input unknown DNA sequence for identification',
-      details: 'Submit FASTA-formatted sequence to public databases like NCBI BLAST or BOLD Systems.',
-    },
-    {
-      title: 'Database Search',
-      description: 'Compare against millions of reference sequences',
-      details: 'Algorithm searches through comprehensive databases containing known species sequences.',
-    },
-    {
-      title: 'Alignment Scoring',
-      description: 'Calculate similarity scores for potential matches',
-      details: 'Uses scoring matrices to evaluate sequence alignment quality and statistical significance.',
-    },
-    {
-      title: 'Statistical Analysis',
-      description: 'Assess the reliability of matches',
-      details: 'E-values and bit scores determine the probability of matches occurring by chance.',
-    },
-    {
-      title: 'Species Identification',
-      description: 'Report most likely taxonomic classification',
-      details: 'Highest scoring matches with sufficient similarity indicate species identity.',
-    },
-  ];
-
-  const blastResults: BlastResult[] = [
-    { identity: 98.5, coverage: 95, evalue: 0.0001, species: 'Homo sapiens' },
-    { identity: 96.2, coverage: 88, evalue: 0.001, species: 'Pan troglodytes' },
-    { identity: 94.8, coverage: 85, evalue: 0.01, species: 'Gorilla gorilla' },
-    { identity: 92.1, coverage: 82, evalue: 0.1, species: 'Pongo abelii' },
-    { identity: 89.7, coverage: 78, evalue: 1.0, species: 'Macaca mulatta' },
-  ];
-
-  const diagramComponents: DiagramComponent[] = [
-    {
-      x: 15,
-      y: 25,
-      label: 'Query Sequence',
-      color: 'bg-blue-600',
-      hoverColor: 'bg-blue-500',
-      description: 'Unknown DNA sequence for identification',
-      details: 'Typically 400-800bp DNA barcode region (COI gene for animals)',
-    },
-    {
-      x: 35,
-      y: 15,
-      label: 'BLAST Algorithm',
-      color: 'bg-purple-600',
-      hoverColor: 'bg-purple-500',
-      icon: Search,
-      description: 'Sequence alignment search algorithm',
-      details: 'Finds regions of local similarity between biological sequences',
-    },
-    {
-      x: 55,
-      y: 35,
-      label: 'Reference Database',
-      color: 'bg-red-600',
-      hoverColor: 'bg-red-500',
-      icon: Database,
-      description: 'Curated collection of known sequences',
-      details: 'NCBI GenBank, BOLD Systems, or custom reference libraries',
-    },
-    {
-      x: 75,
-      y: 20,
-      label: 'Alignment Results',
-      color: 'bg-orange-600',
-      hoverColor: 'bg-orange-500',
-      description: 'Scored sequence comparisons',
-      details: 'Identity percentage, query coverage, and statistical significance',
-    },
-    {
-      x: 85,
-      y: 60,
-      label: 'Species ID',
-      color: 'bg-green-600',
-      hoverColor: 'bg-green-500',
-      icon: Target,
-      description: 'Taxonomic classification result',
-      details: 'Scientific name of most closely related species in database',
-    },
-  ];
-
+  
   return (
     <div className="min-h-screen bg-slate-900 text-white mt-5">
       {/* DNA-themed Hero */}

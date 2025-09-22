@@ -24,7 +24,7 @@ export default function Navigation() {
   }, []);
 
   // sanitize displayed name: remove digits and domain, capitalize
-  const sanitizeDisplayName = (raw) => {
+  const sanitizeDisplayName = (raw: string | null | undefined) : string => {
     if (!raw) return "User";
     let base = raw.includes("@") ? raw.split("@")[0] : raw;
     base = base.split(" ")[0]; // pick first token
@@ -59,7 +59,7 @@ export default function Navigation() {
   ];
 
   // Scroll helper: if target exists on current page -> scroll; else navigate to "/" and pass state to scroll there.
-  const scrollToSection = (sectionId) => {
+  const scrollToSection = (sectionId : string) => {
     const el = document.getElementById(sectionId);
     const navEl = document.querySelector("nav");
     const navHeight = navEl?.getBoundingClientRect().height ?? 72;
@@ -82,7 +82,7 @@ export default function Navigation() {
   };
 
   // NEW: unified handler for nav clicks. Special-case 'hero' (Home) so it goes to the very top.
-  const handleNavClick = (sectionId) => {
+  const handleNavClick = (sectionId: string) => {
     // Home should go to the top of the page
     if (sectionId === "hero") {
       if (location.pathname !== "/") {
@@ -107,8 +107,8 @@ export default function Navigation() {
 
   const handleLogout = async () => {
     try {
-      const maybe = logout();
-      if (maybe && typeof maybe.then === "function") await maybe;
+       logout();
+      
       navigate("/");
     } catch (err) {
       console.error("Logout failed", err);

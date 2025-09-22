@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { Card, CardContent } from './ui/card';
+import { Card, CardContent } from '../ui/card';
 import { Database, FileText, Leaf, Fish } from 'lucide-react';
 import AnimatedCounter from './AnimatedCounter';
 import DNALoader from './DnaLoader';

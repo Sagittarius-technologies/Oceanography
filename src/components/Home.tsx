@@ -4,7 +4,7 @@ import WorldMap from './WorldMap'
 import FileUploader from './FileUploader'
 import Footer from './Footer'
 import ImageGallery from './ImageGallery'
-import DataStats from './DataStats'
+import DataStats from './Datastats/DataStats'
 import Research from './Research'
 import ProcessSection from './ProcessSection'
 

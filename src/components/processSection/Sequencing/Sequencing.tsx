@@ -1,135 +1,28 @@
 // src/components/Sequencing.tsx
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Search, Zap, Activity, TrendingUp } from "lucide-react";
+import { ArrowLeft, Zap, Activity, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
-import { createPageUrl } from "../ui/Index";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { createPageUrl } from "../../ui/Index";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import ProcessFlowDiagram from "../processSection/Sequencematching/ProcessFlowDiagram";
-import InteractiveDiagram from "./Sequencematching/InteractiveDiagram";
-import DnaLoader from "./Sequencematching/Dnaloading"; // adjust path/name if your loader file differs
-
-type SequencingStep = {
-  title: string;
-  description: string;
-  details?: string;
-};
-
-type SeqTech = {
-  technology: string;
-  readLength: number;
-  throughput: number;
-  accuracy: number;
-  cost: number;
-};
-
-type DiagramComponent = {
-  x: number;
-  y: number;
-  label: string;
-  color?: string;
-  hoverColor?: string;
-  icon?: React.ComponentType<any>;
-  description?: string;
-  details?: string;
-};
+import ProcessFlowDiagram from "../Sequencematching/ProcessFlowDiagram";
+import InteractiveDiagram from "../Sequencematching/InteractiveDiagram";
+import DnaLoader from "../Sequencematching/Dnaloading"; // adjust path/name if your loader file differs
+import sequencingSteps from './sequensingSteps';
+import sequencingTechnologies from './sequencingTechnologies';
+import diagramComponents from "./diagramComponents";
 
 const Sequencing: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // replace with real async initialization if needed
     const t = window.setTimeout(() => setLoading(false), 1200);
     return () => clearTimeout(t);
   }, []);
 
-  const sequencingSteps: SequencingStep[] = [
-    {
-      title: "DNA Fragmentation",
-      description: "Breaking DNA into manageable pieces",
-      details: "Random or enzymatic fragmentation creates overlapping fragments for comprehensive coverage.",
-    },
-    {
-      title: "Adapter Ligation",
-      description: "Adding sequencing adapters to DNA fragments",
-      details: "Universal sequences enable binding to sequencing platforms and primer annealing.",
-    },
-    {
-      title: "Amplification",
-      description: "Creating clusters of identical DNA fragments",
-      details: "Bridge amplification or emulsion PCR generates clonal clusters for signal detection.",
-    },
-    {
-      title: "Sequencing by Synthesis",
-      description: "Reading DNA sequence through base incorporation",
-      details: "Fluorescent nucleotides are incorporated and detected in real-time or in cycles.",
-    },
-    {
-      title: "Base Calling",
-      description: "Converting signals to DNA sequence",
-      details: "Sophisticated algorithms interpret optical signals to determine nucleotide sequence.",
-    },
-  ];
-
-  const sequencingTechnologies: SeqTech[] = [
-    { technology: "Sanger", readLength: 800, throughput: 96, accuracy: 99.9, cost: 1000 },
-    { technology: "Illumina", readLength: 300, throughput: 20000000, accuracy: 99.5, cost: 10 },
-    { technology: "PacBio", readLength: 15000, throughput: 500000, accuracy: 95.0, cost: 50 },
-    { technology: "Oxford Nanopore", readLength: 30000, throughput: 4000000, accuracy: 92.0, cost: 20 },
-  ];
-
-  const diagramComponents: DiagramComponent[] = [
-    {
-      x: 15, y: 20,
-      label: "Sample DNA",
-      color: "bg-blue-600",
-      hoverColor: "bg-blue-500",
-      description: "High-quality DNA template for sequencing",
-      details: "Must be pure and intact, typically >1μg for whole genome sequencing"
-    },
-    {
-      x: 35, y: 35,
-      label: "Library Prep",
-      color: "bg-purple-600",
-      hoverColor: "bg-purple-500",
-      description: "DNA fragmentation and adapter addition",
-      details: "Creates sequencing-ready library with platform-specific adapters"
-    },
-    {
-      x: 55, y: 20,
-      label: "Sequencer",
-      color: "bg-red-600",
-      hoverColor: "bg-red-500",
-      icon: Search,
-      description: "Automated DNA sequencing instrument",
-      details: "Uses fluorescence detection and sophisticated optics for base calling"
-    },
-    {
-      x: 75, y: 35,
-      label: "Raw Data",
-      color: "bg-orange-600",
-      hoverColor: "bg-orange-500",
-      icon: Activity,
-      description: "Fluorescent signal data from sequencer",
-      details: "Requires computational processing to convert signals to sequence"
-    },
-    {
-      x: 85, y: 65,
-      label: "DNA Sequence",
-      color: "bg-green-600",
-      hoverColor: "bg-green-500",
-      description: "Final interpreted nucleotide sequence",
-      details: "ATCG sequence with quality scores for each base position"
-    }
-  ];
-
   return (
     <div className="min-h-screen bg-slate-900 text-white relative">
-      {/* Full-screen loader overlay */}
-      
-
-      {/* HERO with the DNA SVG background (same visual as SequenceMatching) */}
       <div className="relative overflow-hidden">
         <div aria-hidden className="absolute inset-0 pointer-events-none">
           <svg viewBox="0 0 1200 520" preserveAspectRatio="xMidYMid slice" className="w-full h-full">

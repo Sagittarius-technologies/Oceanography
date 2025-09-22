@@ -6,7 +6,7 @@ import LoginWrapper from './components/login/LoginWrapper';  // Import the wrapp
 import { AuthProvider } from './components/login/AuthContext';
 import DnaExtraction from './components/processSection/Dnaextraction/DnaExtraction';
 import Pcr from './components/processSection/PCR/Pcr';
-import Sequencing from './components/processSection/Sequencing';
+import Sequencing from './components/processSection/Sequencing/Sequencing';
 import SequenceMatching from './components/processSection/Sequencematching/SequenceMatching';
 
 function App() {
