@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { Dna, Menu, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { AuthContext } from "./AuthContext";
+import { AuthContext } from "./login/AuthContext";
 
 export default function Navigation() {
   const navigate = useNavigate();

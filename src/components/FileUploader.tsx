@@ -12,7 +12,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { AuthContext } from './AuthContext';
+import { AuthContext } from './login/AuthContext';
 
 interface SpeciesPrediction {
   name: string;

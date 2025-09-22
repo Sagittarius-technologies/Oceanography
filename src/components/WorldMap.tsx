@@ -4,37 +4,11 @@ import { motion } from "framer-motion";
 import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
 import * as L from "leaflet"; // runtime import required for fitBounds
 import "leaflet/dist/leaflet.css";
-import SpeciesData from "./Species.json"; // local JSON file (array)
+import SpeciesData from "../jsonFiles/Species.json"; // local JSON file (array)
+import { Taxonomy, Location } from "../types/SpeciesDateTypes";
+import CustomDensityLabel from "./customComponents/CustomDensityLabel";
+import TaxonomyRow from "./customComponents/TaxonomyRow";
 
-/* ----- types ----- */
-type Taxonomy = {
-  phylum: string;
-  className: string; // using className to avoid TS keyword conflict
-  order: string;
-  family: string;
-  genus: string;
-  species: string;
-};
-
-type Location = {
-  id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  size: number;
-  colorClass: string;
-  densityType: "marine" | "high" | "medium" | "low";
-  speciesCount: number;
-  speciesName?: string;
-  commonName?: string;
-  taxonomy?: Taxonomy;
-  populationCount?: number;
-  primarySpecies?: string;
-  country?: string;
-  state?: string;
-};
-
-/* ----- helpers ----- */
 const getMarkerColor = (densityType: Location["densityType"], speciesCount: number) => {
   if (densityType === "marine") return "#DC2626"; // red
   if (speciesCount > 100) return "#EC4899"; // pink
@@ -57,21 +31,17 @@ const getLegendLabel = (d: Location) => {
 
 const formatNumber = (n?: number) => (n == null ? "-" : n.toLocaleString());
 
-/* ----- component ----- */
 export default function WorldMap() {
   const [mapData, setMapData] = useState<Location[]>([]);
   const [selected, setSelected] = useState<Location | null>(null);
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<L.Map | null>(null);
 
-  useEffect(() => {
-    // Map your SpeciesData JSON to the Location type.
-    // Adjust fallback keys below if your JSON uses different names.
+  useEffect(() => {                  // Map your SpeciesData JSON to the Location type.Adjust fallback keys below if your JSON uses different names.
     const load = async () => {
       try {
         const raw = (SpeciesData as any[]); // whatever is exported from your JSON
         const mapped: Location[] = raw.map((s, idx) => {
-          // taxonomy may be nested differently — handle common variants
           const taxonomyFromJson: Taxonomy | undefined =
             s.taxonomy ??
             (s.taxonomy_data ? s.taxonomy_data : undefined) ??
@@ -79,12 +49,12 @@ export default function WorldMap() {
 
           const taxonomy: Taxonomy | undefined = taxonomyFromJson
             ? {
-                phylum: taxonomyFromJson.phylum ?? taxonomyFromJson.Phylum ?? "",
-                className: taxonomyFromJson.className ?? taxonomyFromJson.class ?? taxonomyFromJson.Class ?? "",
-                order: taxonomyFromJson.order ?? taxonomyFromJson.Order ?? "",
-                family: taxonomyFromJson.family ?? taxonomyFromJson.Family ?? "",
-                genus: taxonomyFromJson.genus ?? taxonomyFromJson.Genus ?? "",
-                species: taxonomyFromJson.species ?? taxonomyFromJson.Species ?? "",
+                phylum: taxonomyFromJson.phylum ?? "",
+                className: taxonomyFromJson.className ?? "",
+                order: taxonomyFromJson.order ?? "",
+                family: taxonomyFromJson.family ?? "",
+                genus: taxonomyFromJson.genus ?? "",
+                species: taxonomyFromJson.species ?? "",
               }
             : undefined;
 
@@ -113,15 +83,11 @@ export default function WorldMap() {
 
         setMapData(mapped);
       } catch (err) {
-        // if JSON import fails, log and leave mapData empty
-        // (you can also fallback to an embedded array)
-        // eslint-disable-next-line no-console
         console.error("Failed to load Species.json:", err);
       } finally {
         setLoading(false);
       }
     };
-
     load();
   }, []);
 
@@ -132,16 +98,15 @@ export default function WorldMap() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-10"
-        >
+          className="text-center mb-10" >
+
           <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">Global Biodiversity Map</h2>
           <p className="text-base md:text-lg text-slate-600 max-w-3xl mx-auto">
             Interactive visualization of species distribution worldwide. Click a marker to inspect details.
           </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* LEFT: real Leaflet map (spans two columns) */}
+        <div className="grid lg:grid-cols-3 gap-8">{/* LEFT: real Leaflet map (spans two columns) */} 
           <div className="lg:col-span-2">
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
@@ -149,10 +114,14 @@ export default function WorldMap() {
               transition={{ duration: 0.6 }}
               // reduced height + slight downward offset (10px)
               className="h-[420px] md:h-[520px] lg:h-[640px] rounded-2xl overflow-hidden shadow-2xl border w-full max-w-none"
-              style={{ marginTop: 10 }}
-            >
+              style={{ marginTop: 10 }}>
               <MapContainer
-                whenCreated={(mapInstance) => (mapRef.current = mapInstance)}
+                whenReady={() => {       // callback with no arguments
+                    console.log("Map is ready!");
+                    if (mapRef.current) {
+                       mapRef.current.setView([51.51, -0.1], 15);
+                       }
+                    }}
                 center={[20, 0]}
                 zoom={2}
                 style={{ height: "100%", width: "100%" }}
@@ -181,17 +150,14 @@ export default function WorldMap() {
                           setSelected(loc);
                           if (mapRef.current) {
                             mapRef.current.flyTo([loc.latitude, loc.longitude], 4, { duration: 1.0 });
-                          }
-                        },
-                      }}
-                    />
+                          }},
+                      }}/>
                   ))}
               </MapContainer>
             </motion.div>
           </div>
 
-          {/* RIGHT: legend + details */}
-          <div className="space-y-6">
+          <div className="space-y-6">           {/* RIGHT: legend + details */}
             <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}>
               <div className="rounded-2xl shadow-xl border p-4 bg-white">
                 <div className="flex items-center gap-3 mb-3">
@@ -201,24 +167,11 @@ export default function WorldMap() {
                   </svg>
                   <h3 className="text-lg font-semibold">Data Legend</h3>
                 </div>
-
                 <div className="space-y-3 text-sm text-slate-700">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                    <span>High Marine Density</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-pink-500 rounded-full"></div>
-                    <span>High Species Density (100+)</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
-                    <span>Medium Density (50-100)</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                    <span>Low Density (&lt;50)</span>
-                  </div>
+                  <CustomDensityLabel color="bg-red-500" label="High Marine Density" />
+                  <CustomDensityLabel color="bg-pink-500" label="High Species Density (100+)" />
+                  <CustomDensityLabel color="bg-orange-500" label="Medium Density (50-100)" />
+                  <CustomDensityLabel color="bg-green-500" label="Low Density (&lt;50)" />
                 </div>
               </div>
             </motion.div>
@@ -231,27 +184,21 @@ export default function WorldMap() {
                     <p className="text-sm text-slate-600">Click a marker on the map to view taxonomic info and counts.</p>
                   </div>
                 ) : (
-                  <div>
-                    {/* Header */}
+                  <div> {/* Header */}
                     <div className="flex items-start justify-between">
                       <div>
                         <h4 className="font-semibold text-lg">{selected.name}</h4>
                         <p className="text-sm text-slate-500">Tap a marker to inspect species and location data.</p>
                       </div>
                       <div>
-                        <button onClick={() => setSelected(null)} className="text-sm px-3 py-1 rounded-md border hover:bg-slate-50">
-                          Close
-                        </button>
+                        <button onClick={() => setSelected(null)} className="text-sm px-3 py-1 rounded-md border hover:bg-slate-50">Close</button>
                       </div>
                     </div>
 
-                    {/* Compact dark-styled Species + Location cards (fixed-size, no full-screen) */}
-                    <div className="mt-4 bg-[#0d1117] text-white rounded-lg p-4">
-                      {/* Species Details Card */}
-                      <div className="bg-[#161b22] p-4 rounded-md mb-4">
+                    <div className="mt-4 bg-[#0d1117] text-white rounded-lg p-4">    {/* Compact dark-styled Species + Location cards (fixed-size, no full-screen) */}
+                      <div className="bg-[#161b22] p-4 rounded-md mb-4">       {/* Species Details Card */}
                         <div className="flex justify-between items-center mb-3">
                           <h5 className="text-lg font-bold text-[#34d399]">Species Details</h5>
-                          {/* decorative X */}
                           <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" aria-hidden>
                             <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                           </svg>
@@ -262,12 +209,12 @@ export default function WorldMap() {
 
                         {selected.taxonomy ? (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            <div><span className="text-gray-400 font-medium">Phylum:</span> <span className="ml-1">{selected.taxonomy.phylum}</span></div>
-                            <div><span className="text-gray-400 font-medium">Class:</span> <span className="ml-1">{selected.taxonomy.className}</span></div>
-                            <div><span className="text-gray-400 font-medium">Order:</span> <span className="ml-1">{selected.taxonomy.order}</span></div>
-                            <div><span className="text-gray-400 font-medium">Family:</span> <span className="ml-1">{selected.taxonomy.family}</span></div>
-                            <div><span className="text-gray-400 font-medium">Genus:</span> <span className="ml-1">{selected.taxonomy.genus}</span></div>
-                            <div><span className="text-gray-400 font-medium">Species:</span> <span className="ml-1">{selected.taxonomy.species}</span></div>
+                              <TaxonomyRow label="Phylum" value={selected.taxonomy.phylum} />
+                              <TaxonomyRow label="Class" value={selected.taxonomy.className} />
+                              <TaxonomyRow label="Order" value={selected.taxonomy.order} />
+                              <TaxonomyRow label="Family" value={selected.taxonomy.family} />
+                              <TaxonomyRow label="Genus" value={selected.taxonomy.genus} />
+                              <TaxonomyRow label="Species" value={selected.taxonomy.species} />
                           </div>
                         ) : (
                           <div className="text-sm text-gray-500">No taxonomy available.</div>
@@ -303,8 +250,6 @@ export default function WorldMap() {
                         </div>
                       </div>
                     </div>
-
-                    {/* Legend label / tip */}
                     <div className="mt-3 text-sm text-slate-500">
                       <p>
                         <span className="font-medium">Legend label:</span> {getLegendLabel(selected)}

@@ -2,25 +2,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink, Calendar, MapPin, Award, X } from 'lucide-react';
+import { Researcher } from '../types/SpeciesDateTypes';
+import researchersData from '../jsonFiles/researchers.json'
 
-type Researcher = {
-  id: number;
-  name: string;
-  field: string;
-  image: string;
-  birth: string;
-  death: string | null;
-  nationality: string;
-  achievements: string[];
-  biography: string;
-  links: { name: string; url: string }[];
-  quote: string;
-};
-
-/* ------------------------
-   Small UI primitives
-   (local, minimal — tweak styles as needed)
-   ------------------------ */
 const Card: React.FC<{ className?: string; onClick?: () => void; children?: React.ReactNode }> = ({ className = '', onClick, children }) => (
   <div onClick={onClick} className={`rounded-2xl overflow-hidden ${className}`} role="button" tabIndex={0}>
     {children}
@@ -81,83 +65,8 @@ const DialogTitle: React.FC<{ children?: React.ReactNode; className?: string }> 
   <h3 className={`text-2xl font-bold ${className}`}>{children}</h3>
 );
 
-/* ------------------------
-   Data
-   ------------------------ */
-const researchers: Researcher[] = [
-  {
-    id: 1,
-    name: "Charles Darwin",
-    field: "Natural Selection & Evolution",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Charles_Darwin_seated_crop.jpg/512px-Charles_Darwin_seated_crop.jpg",
-    birth: "1809-02-12",
-    death: "1882-04-19",
-    nationality: "British",
-    achievements: [
-      "Theory of Evolution by Natural Selection",
-      "Author of 'On the Origin of Species'",
-      "Voyage on HMS Beagle",
-      "Established modern evolutionary biology"
-    ],
-    biography:
-      "Charles Robert Darwin was an English naturalist, geologist and biologist, best known for his contributions to the science of evolution. His proposition that all species of life have descended over time from common ancestors is now widely accepted and considered a foundational concept in science.",
-    links: [
-      { name: "Darwin Online", url: "http://darwin-online.org.uk/" },
-      { name: "Natural History Museum", url: "https://www.nhm.ac.uk/discover/charles-darwin.html" }
-    ],
-    quote: "It is not the strongest of the species that survives, nor the most intelligent, but the one most responsive to change."
-  },
-  {
-    id: 2,
-    name: "Gregor Mendel",
-    field: "Genetics & Heredity",
-    image: "/images/Gregor_Mendel_2.jpg",
-    birth: "1822-07-20",
-    death: "1884-01-06",
-    nationality: "Austrian",
-    achievements: [
-      "Laws of Mendelian Inheritance",
-      "Father of Modern Genetics",
-      "Pea Plant Experiments",
-      "Discovered dominant and recessive traits"
-    ],
-    biography:
-      "Gregor Johann Mendel was a meteorologist, mathematician, biologist, Augustinian friar and abbot of St. Thomas' Abbey in Brno. He is famous for his work on heredity and is known as the father of modern genetics.",
-    links: [
-      { name: "Mendel Museum", url: "https://mendelmuseum.muni.cz/en" },
-      { name: "Nature Education", url: "https://www.nature.com/scitable/topicpage/gregor-mendel-and-the-principles-of-inheritance-593/" }
-    ],
-    quote:
-      "My scientific studies have afforded me great gratification; and I am convinced that it will not be long before the whole world acknowledges the results of my work."
-  },
-  {
-    id: 3,
-    name: "Rosalind Franklin",
-    field: "X-ray Crystallography & DNA Structure",
-    image: "/images/Rosalind-Franklin.jpg",
-    birth: "1920-07-25",
-    death: "1958-04-16",
-    nationality: "British",
-    achievements: [
-      "Photo 51 - X-ray crystallography of DNA",
-      "Contributed to discovery of DNA double helix",
-      "Research on RNA and virus structures",
-      "Pioneer in molecular biology techniques"
-    ],
-    biography:
-      "Rosalind Elsie Franklin was an English chemist and X-ray crystallographer whose work was central to the understanding of the molecular structures of DNA, RNA, tobacco mosaic virus, and polio virus.",
-    links: [
-      { name: "King's College London", url: "https://www.kcl.ac.uk/rosalind-franklin" },
-      { name: "Smithsonian", url: "https://www.smithsonianmag.com/science-nature/rosalind-franklin-and-dna-56487/" }
-    ],
-    quote: "Science and everyday life cannot and should not be separated."
-  },
-  // add other researchers or use your existing list...
-];
+const researchers: Researcher[] = researchersData;
 
-/* ------------------------
-   Component
-   ------------------------ */
 export default function ResearchersSection(): JSX.Element {
   const [selectedResearcher, setSelectedResearcher] = useState<Researcher | null>(null);
 
@@ -170,7 +79,6 @@ export default function ResearchersSection(): JSX.Element {
   const onViewPrimaryProfile = (researcher: Researcher) => {
     const first = researcher.links?.[0];
     if (first?.url) {
-      // open primary link in new tab (external)
       window.open(first.url, '_blank', 'noopener,noreferrer');
     }
   };
