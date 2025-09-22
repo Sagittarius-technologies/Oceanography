@@ -1,56 +1,8 @@
 import React, { useRef } from "react";
 import { motion } from "framer-motion";
+import imageGallery from "../jsonFiles/imageGallery.json"
 
-const galleryImages = [
-  {
-    url: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=2070&auto=format&fit=crop",
-    title: "Marine Biodiversity",
-    description: "Explore the vast ecosystems of our oceans.",
-    link: "https://ocean.si.edu/"
-  },
-  {
-    url: "https://images.unsplash.com/photo-1555169062-013468b47731?q=80&w=1887&auto=format&fit=crop",
-    title: "Avian Species",
-    description: "Discover the world of birds through ornithology.",
-    link: "https://birdsoftheworld.org/bow/home"
-  },
-  {
-    url: "/images/Tiger_1.jpg",
-    title: "Mammalian Research",
-    description: "Genetic markers and studies in mammals.",
-    link: "https://www.mammalsociety.org/"
-  },
-  {
-    url: "/images/insect_3.jpg",
-    title: "Entomology Studies",
-    description: "The fascinating world of insect species.",
-    link: "https://www.entsoc.org/"
-  },
-  {
-    url: "/images/reptiles_1.jpg",
-    title: "Herpetology",
-    description: "Research on reptiles and amphibians.",
-    link: "https://ssarherps.org/"
-  },
-  {
-    url: "/images/mushroom.jpg",
-    title: "Mycology",
-    description: "The study of fungi and their genetic diversity.",
-    link: "https://namyco.org/"
-  },
-  {
-    url: "/images/botony.jpg",
-    title: "Botany",
-    description: "Exploring plant science and genomics.",
-    link: "https://www.botany.org/"
-  },
-  {
-    url: "/images/virus.jpg",
-    title: "Virology",
-    description: "The intricate science of viruses.",
-    link: "https://www.asv.org/"
-  }
-];
+const galleryImages = imageGallery
 
 export default function ImageGallery() {
   const containerRef = useRef(null);
@@ -104,11 +56,6 @@ export default function ImageGallery() {
               // Make the first card's fade & overlay super quick so it's visible before it scrolls away
               const cardInitial = { opacity: isFirstOfSequence ? 0.3 : 0.0, scale: isFirstOfSequence ? 0.99 : 0.96 };
               const cardAnimate = { opacity: 1, scale: 1 };
-              const cardTransition = {
-                delay: 0, // no delays; animate immediately on mount
-                duration: isFirstOfSequence ? 0.12 : 0.22,
-                ease: "easeOut"
-              };
 
               // Fast overlay for the first item, slightly longer for others
               const overlayInitial = { opacity: 0 };
@@ -126,7 +73,9 @@ export default function ImageGallery() {
                   <motion.div
                     initial={cardInitial}
                     animate={cardAnimate}
-                    transition={cardTransition}
+                    transition={{delay: 0, // no delays; animate immediately on mount
+                           duration: isFirstOfSequence ? 0.12 : 0.22,
+                           ease: "easeOut"}}
                     whileHover={{ scale: 1.04, y: -6 }}
                     className="h-96 bg-white rounded-2xl overflow-hidden shadow-2xl cursor-pointer group"
                     aria-label={image.title}

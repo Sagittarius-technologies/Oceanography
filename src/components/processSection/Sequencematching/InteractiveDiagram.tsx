@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent } from './ui/card';
-import { Badge } from './ui/badge';
+import { Card, CardContent } from '../../ui/card';
+import { Badge } from '../../ui/badge';
 
 export type DiagramComponent = {
   x: number;
@@ -94,7 +94,7 @@ export default function InteractiveDiagram({
 
                 {component.label && (
                   <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-                    <Badge variant="outline" className="text-xs">
+                    <Badge  className="text-xs">
                       {component.label}
                     </Badge>
                   </div>

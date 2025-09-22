@@ -1,0 +1,50 @@
+[
+  {
+    "url": "https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=2070&auto=format&fit=crop",
+    "title": "Marine Biodiversity",
+    "description": "Explore the vast ecosystems of our oceans.",
+    "link": "https://ocean.si.edu/"
+  },
+  {
+    "url": "https://images.unsplash.com/photo-1555169062-013468b47731?q=80&w=1887&auto=format&fit=crop",
+    "title": "Avian Species",
+    "description": "Discover the world of birds through ornithology.",
+    "link": "https://birdsoftheworld.org/bow/home"
+  },
+  {
+    "url": "/images/Tiger_1.jpg",
+    "title": "Mammalian Research",
+    "description": "Genetic markers and studies in mammals.",
+    "link": "https://www.mammalsociety.org/"
+  },
+  {
+    "url": "/images/insect_3.jpg",
+    "title": "Entomology Studies",
+    "description": "The fascinating world of insect species.",
+    "link": "https://www.entsoc.org/"
+  },
+  {
+    "url": "/images/reptiles_1.jpg",
+    "title": "Herpetology",
+    "description": "Research on reptiles and amphibians.",
+    "link": "https://ssarherps.org/"
+  },
+  {
+    "url": "/images/mushroom.jpg",
+    "title": "Mycology",
+    "description": "The study of fungi and their genetic diversity.",
+    "link": "https://namyco.org/"
+  },
+  {
+    "url": "/images/botony.jpg",
+    "title": "Botany",
+    "description": "Exploring plant science and genomics.",
+    "link": "https://www.botany.org/"
+  },
+  {
+    "url": "/images/virus.jpg",
+    "title": "Virology",
+    "description": "The intricate science of viruses.",
+    "link": "https://www.asv.org/"
+  }
+]

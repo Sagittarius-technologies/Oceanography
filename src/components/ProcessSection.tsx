@@ -4,15 +4,7 @@ import { Card, CardContent } from './ui/card';
 import { TestTube, Dna, Search, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './ui/Index';
-
-type ProcessStep = {
-  number: string;
-  title: string;
-  description: string;
-  icon: React.ComponentType<any>;
-  color: string; // tailwind gradient class suffix (e.g. 'from-teal-500 to-cyan-500')
-  page: string;
-};
+import { ProcessStep } from '../types/ProcessSectionTypes';
 
 const processSteps: ProcessStep[] = [
   {

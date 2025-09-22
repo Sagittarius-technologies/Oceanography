@@ -1,14 +1,14 @@
 // src/components/Sequencing.tsx
 import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowLeft, Search, Zap, Activity, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
-import { createPageUrl } from "./ui/Index";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { createPageUrl } from "../ui/Index";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import ProcessFlowDiagram from "./ProcessFlowDiagram";
-import InteractiveDiagram from "./InteractiveDiagram";
-import DnaLoader from "./Dnaloading"; // adjust path/name if your loader file differs
+import ProcessFlowDiagram from "../processSection/Sequencematching/ProcessFlowDiagram";
+import InteractiveDiagram from "./Sequencematching/InteractiveDiagram";
+import DnaLoader from "./Sequencematching/Dnaloading"; // adjust path/name if your loader file differs
 
 type SequencingStep = {
   title: string;

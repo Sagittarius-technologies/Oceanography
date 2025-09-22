@@ -1,14 +1,15 @@
 // src/components/Pcr.tsx
 import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Dna, Thermometer, Timer, Zap } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft, Thermometer, Timer } from "lucide-react";
 import { Link } from "react-router-dom";
-import { createPageUrl } from "./ui/Index";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { createPageUrl } from "../../ui/Index";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import ProcessFlowDiagram from "./ProcessFlowDiagram";
-import InteractiveDiagram from "./InteractiveDiagram";
-import DnaLoader from "./Dnaloading"; // adjust path/name if your loader file differs
+import ProcessFlowDiagram from "../Sequencematching/ProcessFlowDiagram";
+import InteractiveDiagram from "../Sequencematching/InteractiveDiagram";
+import DnaLoader from "../Sequencematching/Dnaloading"; // adjust path/name if your loader file differs
+import diagramDataComponent from "./DiagramDataComponent";
 
 const Pcr: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -47,57 +48,9 @@ const Pcr: React.FC = () => {
     { cycle: 30, temperature: 94, copies: 1073741824 },
   ];
 
-  const diagramComponents = [
-    {
-      x: 20, y: 20,
-      label: "Template DNA",
-      color: "bg-blue-600",
-      hoverColor: "bg-blue-500",
-      icon: Dna,
-      description: "Original double-stranded DNA containing target sequence",
-      details: "Contains the specific region to be amplified, typically 100-3000 base pairs long"
-    },
-    {
-      x: 50, y: 15,
-      label: "Primers",
-      color: "bg-purple-600",
-      hoverColor: "bg-purple-500",
-      description: "Short DNA sequences that bind to template",
-      details: "Forward and reverse primers, typically 18-25 nucleotides long, define the target region"
-    },
-    {
-      x: 80, y: 25,
-      label: "Taq Polymerase",
-      color: "bg-red-600",
-      hoverColor: "bg-red-500",
-      icon: Zap,
-      description: "Heat-stable enzyme that synthesizes DNA",
-      details: "Extracted from Thermus aquaticus, remains active at high temperatures used in PCR"
-    },
-    {
-      x: 35, y: 60,
-      label: "dNTPs",
-      color: "bg-orange-600",
-      hoverColor: "bg-orange-500",
-      description: "Building blocks for new DNA synthesis",
-      details: "Deoxynucleoside triphosphates (dATP, dCTP, dGTP, dTTP) provide energy and bases"
-    },
-    {
-      x: 65, y: 75,
-      label: "Amplified DNA",
-      color: "bg-green-600",
-      hoverColor: "bg-green-500",
-      icon: Dna,
-      description: "Exponentially amplified target sequence",
-      details: "Millions of copies of the target DNA region after 25-35 PCR cycles"
-    }
-  ];
-
   return (
     <div className="min-h-screen bg-slate-900 text-white mg-top-20 relative mt-5">
-      {/* Full-screen DNA loader overlay */}
-      
-      {/* HERO with DNA SVG background (same visual as Sequencing/DnaExtraction) */}
+    
       <div className="relative overflow-hidden">
         <div aria-hidden className="absolute inset-0 pointer-events-none">
           <svg viewBox="0 0 1200 520" preserveAspectRatio="xMidYMid slice" className="w-full h-full">
@@ -209,7 +162,7 @@ const Pcr: React.FC = () => {
 
         {/* Interactive Components */}
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} className="mb-16">
-          <InteractiveDiagram title="PCR Reaction Components" components={diagramComponents} />
+          <InteractiveDiagram title="PCR Reaction Components" components={diagramDataComponent} />
         </motion.div>
 
         {/* Amplification Curve */}

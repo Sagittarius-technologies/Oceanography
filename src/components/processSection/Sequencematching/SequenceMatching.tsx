@@ -2,8 +2,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Target, Database, Search, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { createPageUrl } from './ui/Index';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { createPageUrl } from '../../ui/Index';
+import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import {
   ScatterChart,
   Scatter,

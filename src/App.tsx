@@ -4,10 +4,10 @@ import Header from './components/Header';
 import Home from './components/Home';
 import LoginWrapper from './components/login/LoginWrapper';  // Import the wrapper
 import { AuthProvider } from './components/login/AuthContext';
-import DnaExtraction from './components/DnaExtraction';
-import Pcr from './components/Pcr';
-import Sequencing from './components/Sequencing';
-import SequenceMatching from './components/SequenceMatching';
+import DnaExtraction from './components/processSection/Dnaextraction/DnaExtraction';
+import Pcr from './components/processSection/PCR/Pcr';
+import Sequencing from './components/processSection/Sequencing';
+import SequenceMatching from './components/processSection/Sequencematching/SequenceMatching';
 
 function App() {
   return (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
+import { Card, CardContent } from '../../ui/card';
+import { Button } from '../../ui/button';
 import { ChevronRight, Play, Pause, RotateCcw } from 'lucide-react';
 
 type ExtractionStep = {
@@ -13,8 +13,10 @@ type ExtractionStep = {
 
 type ProcessFlowDiagramProps = {
   steps: ExtractionStep[];
-  title?: string;
+  title: string;
 };
+
+
 
 export default function ProcessFlowDiagram({ steps, title }: ProcessFlowDiagramProps): JSX.Element {
   const [currentStep, setCurrentStep] = useState<number>(0);

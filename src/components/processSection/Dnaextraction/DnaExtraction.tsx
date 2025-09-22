@@ -1,144 +1,28 @@
 // src/components/DnaExtraction.tsx
 import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, TestTube, Beaker, Zap, Droplets, Microscope } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import { createPageUrl } from "./ui/Index";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import ProcessFlowDiagram from "./ProcessFlowDiagram";
-import InteractiveDiagram from "./InteractiveDiagram";
-// Import your DNA loader — adjust path/name if needed (DnaLoader | Dnaloading)
-import DnaLoader from "./Dnaloading";
-
-type ExtractionStep = {
-  title: string;
-  description: string;
-  details: string;
-  icon?: string;
-};
-
-type DiagramComponent = {
-  x: number;
-  y: number;
-  label: string;
-  color: string;
-  hoverColor?: string;
-  icon: React.ComponentType<any>;
-  description: string;
-  details: string;
-};
-
-type Connection = {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-};
-
-type RealWorldMethod = {
-  method: string;
-  purity: string;
-  yield: string;
-  time: string;
-  cost: string;
-};
+import { createPageUrl } from "../../ui/Index";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Badge } from "../../ui/badge";
+import ProcessFlowDiagram from "../Sequencematching/ProcessFlowDiagram";
+import InteractiveDiagram from "../Sequencematching/InteractiveDiagram";
+import StatCard from "../../customComponents/StatCard";
+import DnaLoader from "../Sequencematching/Dnaloading";    // Import your DNA loader — adjust path/name if needed (DnaLoader | Dnaloading
+import { ExtractionStep,Connection,RealWorldMethod } from "../../../types/ProcessSectionTypes";
+import extractionStepDetails from '../../../jsonFiles/extractionStep.json'
+import diagramComponents from './DiagramComponents'
 
 const DnaExtraction: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    // Simulated initial load. Replace with real async work if needed
+  useEffect(() => {    // Simulated initial load.
     const t = window.setTimeout(() => setLoading(false), 1200);
     return () => clearTimeout(t);
   }, []);
 
-  const extractionSteps: ExtractionStep[] = [
-    {
-      title: "Cell Lysis",
-      description: "Breaking open cells to release their contents",
-      details:
-        "Using detergents and enzymes to disrupt cell membranes and nuclear envelopes, releasing DNA into solution.",
-      icon: "1",
-    },
-    {
-      title: "Protein Removal",
-      description: "Separating proteins from DNA",
-      details:
-        "Adding salt solutions and proteases to denature and precipitate proteins, leaving DNA in solution.",
-      icon: "2",
-    },
-    {
-      title: "DNA Precipitation",
-      description: "Concentrating and purifying DNA",
-      details:
-        "Using alcohol (ethanol or isopropanol) to precipitate DNA out of solution as white fibers.",
-      icon: "3",
-    },
-    {
-      title: "DNA Washing",
-      description: "Removing contaminants and salts",
-      details: "Washing DNA pellet with 70% ethanol to remove residual salts and impurities.",
-      icon: "4",
-    },
-    {
-      title: "DNA Resuspension",
-      description: "Preparing pure DNA for analysis",
-      details: "Dissolving clean DNA in sterile water or TE buffer for downstream applications.",
-      icon: "5",
-    },
-  ];
-
-  const diagramComponents: DiagramComponent[] = [
-    {
-      x: 15,
-      y: 25,
-      label: "Sample",
-      color: "bg-blue-600",
-      hoverColor: "bg-blue-500",
-      icon: TestTube,
-      description: "Biological sample (blood, tissue, saliva)",
-      details: "Starting material containing cells with DNA in nuclei",
-    },
-    {
-      x: 35,
-      y: 25,
-      label: "Lysis Buffer",
-      color: "bg-purple-600",
-      hoverColor: "bg-purple-500",
-      icon: Beaker,
-      description: "Chemical solution to break open cells",
-      details: "Contains detergents (SDS), salt (NaCl), and sometimes enzymes (proteinase K)",
-    },
-    {
-      x: 55,
-      y: 45,
-      label: "Cell Lysis",
-      color: "bg-red-600",
-      hoverColor: "bg-red-500",
-      icon: Zap,
-      description: "Process of breaking open cells",
-      details: "Cells are disrupted, releasing DNA, proteins, and other cellular components",
-    },
-    {
-      x: 75,
-      y: 25,
-      label: "Protein Removal",
-      color: "bg-orange-600",
-      hoverColor: "bg-orange-500",
-      icon: Droplets,
-      description: "Separation of proteins from DNA",
-      details: "Proteins are denatured and removed using salt precipitation or organic solvents",
-    },
-    {
-      x: 85,
-      y: 70,
-      label: "Pure DNA",
-      color: "bg-green-600",
-      hoverColor: "bg-green-500",
-      icon: Microscope,
-      description: "Final purified DNA product",
-      details: "High-quality DNA ready for PCR, sequencing, or other molecular applications",
-    },
-  ];
+  const extractionSteps: ExtractionStep[] = extractionStepDetails
 
   const connections: Connection[] = [
     { from: { x: 15, y: 25 }, to: { x: 35, y: 25 } },
@@ -156,11 +40,7 @@ const DnaExtraction: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white relative mt-5">
-      {/* Full-screen DNA loader overlay (keeps code ready if you want to show loader) */}
-     
-      {/* DNA-themed Hero with SVG background */}
-      <div className="relative overflow-hidden">
-        {/* decorative SVG background */}
+      <div className="relative overflow-hidden">   {/* decorative SVG background */}
         <div aria-hidden className="absolute inset-0 pointer-events-none">
           <svg viewBox="0 0 1200 520" preserveAspectRatio="xMidYMid slice" className="w-full h-full">
             <defs>
@@ -193,7 +73,6 @@ const DnaExtraction: React.FC = () => {
           </svg>
         </div>
 
-        {/* Header / Hero content (Back link inside content like Sequencing.tsx) */}
         <div className="relative z-10 py-16">
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex flex-col md:flex-row items-center gap-8">
@@ -210,7 +89,6 @@ const DnaExtraction: React.FC = () => {
                   The foundation of molecular biology — isolating pure DNA from biological samples.
                 </p>
 
-                {/* Back link placed inline in hero content — matches Sequencing.tsx alignment */}
                 <div className="mt-6">
                   <Link
                     to={createPageUrl("Home")}
@@ -243,34 +121,22 @@ const DnaExtraction: React.FC = () => {
               </p>
 
               <div className="grid md:grid-cols-3 gap-6 mt-8">
-                <div className="text-center p-6 bg-slate-900 rounded-lg">
-                  <div className="text-3xl font-bold text-teal-400 mb-2">99.9%</div>
-                  <div className="text-slate-300">Typical Purity</div>
-                </div>
-                <div className="text-center p-6 bg-slate-900 rounded-lg">
-                  <div className="text-3xl font-bold text-cyan-400 mb-2">10-100μg</div>
-                  <div className="text-slate-300">DNA Yield per mg tissue</div>
-                </div>
-                <div className="text-center p-6 bg-slate-900 rounded-lg">
-                  <div className="text-3xl font-bold text-blue-400 mb-2">A260/A280</div>
-                  <div className="text-slate-300">Quality Measure: 1.8-2.0</div>
-                </div>
+                  <StatCard value="99.9%" label="Typical Purity" color="text-teal-400" />
+                  <StatCard value="10-100μg" label="DNA Yield per mg tissue" color="text-cyan-400" />
+                  <StatCard value="A260/A280" label="Quality Measure: 1.8-2.0" color="text-blue-400" />
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Interactive Process Flow */}
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="mb-16">
           <ProcessFlowDiagram title="DNA Extraction Workflow" steps={extractionSteps} />
         </motion.div>
 
-        {/* Interactive Diagram */}
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="mb-16">
           <InteractiveDiagram title="DNA Extraction Process Components" components={diagramComponents} connections={connections} />
         </motion.div>
 
-        {/* Real-World Data Comparison */}
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="mb-16">
           <Card className="bg-slate-800 border-slate-700">
             <CardHeader>
@@ -299,7 +165,7 @@ const DnaExtraction: React.FC = () => {
                       >
                         <td className="py-3 px-4 text-white font-medium">{method.method}</td>
                         <td className="py-3 px-4">
-                          <Badge variant="outline" className="text-green-400 border-green-400">
+                          <Badge className="text-green-400 border-green-400">
                             {method.purity}
                           </Badge>
                         </td>
@@ -315,7 +181,6 @@ const DnaExtraction: React.FC = () => {
           </Card>
         </motion.div>
 
-        {/* Detailed Scientific Information */}
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
           <div className="grid lg:grid-cols-2 gap-8">
             <Card className="bg-slate-800 border-slate-700">

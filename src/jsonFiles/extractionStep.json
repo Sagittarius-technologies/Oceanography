@@ -1,0 +1,32 @@
+[
+  {
+    "title": "Cell Lysis",
+    "description": "Breaking open cells to release their contents",
+    "details": "Using detergents and enzymes to disrupt cell membranes and nuclear envelopes, releasing DNA into solution.",
+    "icon": "1"
+  },
+  {
+    "title": "Protein Removal",
+    "description": "Separating proteins from DNA",
+    "details": "Adding salt solutions and proteases to denature and precipitate proteins, leaving DNA in solution.",
+    "icon": "2"
+  },
+  {
+    "title": "DNA Precipitation",
+    "description": "Concentrating and purifying DNA",
+    "details": "Using alcohol (ethanol or isopropanol) to precipitate DNA out of solution as white fibers.",
+    "icon": "3"
+  },
+  {
+    "title": "DNA Washing",
+    "description": "Removing contaminants and salts",
+    "details": "Washing DNA pellet with 70% ethanol to remove residual salts and impurities.",
+    "icon": "4"
+  },
+  {
+    "title": "DNA Resuspension",
+    "description": "Preparing pure DNA for analysis",
+    "details": "Dissolving clean DNA in sterile water or TE buffer for downstream applications.",
+    "icon": "5"
+  }
+]
