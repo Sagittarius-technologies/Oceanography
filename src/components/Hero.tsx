@@ -1,28 +1,10 @@
-// src/components/HeroSection.tsx
+// src/components/HeroSection.js
 import React, { useRef, useState, useEffect } from 'react';
-import { motion, PanInfo } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ChevronDown, Dna, Microscope, Fish } from 'lucide-react';
 
-// types
-interface Item {
-  id: number;
-  image: string;
-  name: string;
-  section: string;
-  position?: { x: number; y: number };
-}
-
-interface HeroSectionProps {
-  onNavigate?: (sectionId: string) => void;
-}
-
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children: React.ReactNode;
-  variant?: 'outline' | 'default';
-}
-
-// lightweight Button fallback
-const Button: React.FC<ButtonProps> = ({ children, className = '', variant = 'default', ...props }) => {
+// lightweight Button fallback (same as yours)
+const Button = ({ children, className = '', variant, ...props }) => {
   const base = 'inline-flex items-center justify-center font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-300';
   const outline = variant === 'outline'
     ? 'bg-transparent border border-teal-500 text-teal-600 hover:bg-teal-50'
@@ -37,16 +19,17 @@ const Button: React.FC<ButtonProps> = ({ children, className = '', variant = 'de
 };
 
 // thumbnails (your data)
-const itemsTemplate: Item[] = [
+
+const itemsTemplate = [
   { id: 1, image: '/images/jellyfish-2.jpg', name: 'Marine Life', section: 'map' },
   { id: 2, image: '/images/parrot 2.jpg', name: 'Birds', section: 'gallery' },
   { id: 3, image: '/images/monkey.jpg', name: 'Mammals', section: 'process' },
   { id: 4, image: '/images/bee.jpg', name: 'Insects', section: 'data' },
 ];
 
-export default function HeroSection({ onNavigate }: HeroSectionProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
+export default function HeroSection({ onNavigate }) {
+  const containerRef = useRef(null);
+  const [items, setItems] = useState([]);
 
   // compute initial positions once (responsive)
   useEffect(() => {
@@ -60,7 +43,7 @@ export default function HeroSection({ onNavigate }: HeroSectionProps) {
       const leftX = Math.max(8, Math.round(cw * 0.02));
       const rightX = Math.max(200, Math.round(cw - cw * 0.06 - 96));
 
-      const computed: Item[] = itemsTemplate.map((t, idx) => {
+      const computed = itemsTemplate.map((t, idx) => {
         const isLeft = idx < 2;
         if (isLeft) {
           const base = leftX;
@@ -84,12 +67,12 @@ export default function HeroSection({ onNavigate }: HeroSectionProps) {
   }, []);
 
   // update a single item's position
-  const updatePosition = (id: number, x: number, y: number) => {
+  const updatePosition = (id, x, y) => {
     setItems(prev => prev.map(p => (p.id === id ? { ...p, position: { x, y } } : p)));
   };
 
   // keyboard navigation and Enter -> scroll
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, item: Item) => {
+  const handleKeyDown = (e, item) => {
     const step = e.shiftKey ? 20 : 8;
     let { x, y } = item.position || { x: 0, y: 0 };
     if (e.key === 'ArrowUp') y -= step;
@@ -108,8 +91,8 @@ export default function HeroSection({ onNavigate }: HeroSectionProps) {
   };
 
   // drag end: compute absolute coords relative to container and persist
-  const handleDragEnd = (e: React.DragEvent | MouseEvent | TouchEvent, _info: PanInfo, item: Item) => {
-    const el = e.currentTarget as HTMLDivElement;
+  const handleDragEnd = (e, _info, item) => {
+    const el = e.currentTarget;
     const container = containerRef.current;
     if (!el || !container) return;
 
@@ -126,7 +109,7 @@ export default function HeroSection({ onNavigate }: HeroSectionProps) {
   };
 
   // helper scroll
-  const scrollToSection = (sectionId: string) => {
+  const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) element.scrollIntoView({ behavior: 'smooth' });
     if (onNavigate) onNavigate(sectionId);
@@ -151,8 +134,8 @@ export default function HeroSection({ onNavigate }: HeroSectionProps) {
             animate={{ opacity: 1 }}
             onDragEnd={(e, info) => handleDragEnd(e, info, item)}
             onDoubleClick={() => {
-              const containerRect = containerRef.current?.getBoundingClientRect();
-              if (!containerRect) return;
+              // reset to initial responsive location
+              const containerRect = containerRef.current.getBoundingClientRect();
               const cw = containerRect.width;
               const ch = containerRect.height;
               const idx = itemsTemplate.findIndex(s => s.id === item.id);
@@ -196,7 +179,7 @@ export default function HeroSection({ onNavigate }: HeroSectionProps) {
               <div className="w-14 h-14 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center">
                 <Dna className="w-7 h-7 text-white" />
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 bg-clip-text text-transparent">SAGITTARIUS</h1>
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 bg-clip-text text-transparent">OCEANOGRAPHY</h1>
             </div>
 
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 leading-tight">
