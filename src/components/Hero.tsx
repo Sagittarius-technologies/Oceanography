@@ -1,10 +1,28 @@
-// src/components/HeroSection.js
+// src/components/HeroSection.tsx
 import React, { useRef, useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, PanInfo } from 'framer-motion';
 import { ChevronDown, Dna, Microscope, Fish } from 'lucide-react';
 
-// lightweight Button fallback (same as yours)
-const Button = ({ children, className = '', variant, ...props }) => {
+// types
+interface Item {
+  id: number;
+  image: string;
+  name: string;
+  section: string;
+  position?: { x: number; y: number };
+}
+
+interface HeroSectionProps {
+  onNavigate?: (sectionId: string) => void;
+}
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  children: React.ReactNode;
+  variant?: 'outline' | 'default';
+}
+
+// lightweight Button fallback
+const Button: React.FC<ButtonProps> = ({ children, className = '', variant = 'default', ...props }) => {
   const base = 'inline-flex items-center justify-center font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-300';
   const outline = variant === 'outline'
     ? 'bg-transparent border border-teal-500 text-teal-600 hover:bg-teal-50'
@@ -12,24 +30,23 @@ const Button = ({ children, className = '', variant, ...props }) => {
   const gradient = variant === 'outline' ? '' : 'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600';
 
   return (
-    <button {...props} className={`${base} ${outline} ${gradient} ${className}`.trim()}>
+    <button {...props} className={${base} ${outline} ${gradient} ${className}.trim()}>
       {children}
     </button>
   );
 };
 
 // thumbnails (your data)
-
-const itemsTemplate = [
+const itemsTemplate: Item[] = [
   { id: 1, image: '/images/jellyfish-2.jpg', name: 'Marine Life', section: 'map' },
   { id: 2, image: '/images/parrot 2.jpg', name: 'Birds', section: 'gallery' },
   { id: 3, image: '/images/monkey.jpg', name: 'Mammals', section: 'process' },
   { id: 4, image: '/images/bee.jpg', name: 'Insects', section: 'data' },
 ];
 
-export default function HeroSection({ onNavigate }) {
-  const containerRef = useRef(null);
-  const [items, setItems] = useState([]);
+export default function HeroSection({ onNavigate }: HeroSectionProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
 
   // compute initial positions once (responsive)
   useEffect(() => {
@@ -43,7 +60,7 @@ export default function HeroSection({ onNavigate }) {
       const leftX = Math.max(8, Math.round(cw * 0.02));
       const rightX = Math.max(200, Math.round(cw - cw * 0.06 - 96));
 
-      const computed = itemsTemplate.map((t, idx) => {
+      const computed: Item[] = itemsTemplate.map((t, idx) => {
         const isLeft = idx < 2;
         if (isLeft) {
           const base = leftX;
@@ -67,12 +84,12 @@ export default function HeroSection({ onNavigate }) {
   }, []);
 
   // update a single item's position
-  const updatePosition = (id, x, y) => {
+  const updatePosition = (id: number, x: number, y: number) => {
     setItems(prev => prev.map(p => (p.id === id ? { ...p, position: { x, y } } : p)));
   };
 
   // keyboard navigation and Enter -> scroll
-  const handleKeyDown = (e, item) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, item: Item) => {
     const step = e.shiftKey ? 20 : 8;
     let { x, y } = item.position || { x: 0, y: 0 };
     if (e.key === 'ArrowUp') y -= step;
@@ -91,8 +108,8 @@ export default function HeroSection({ onNavigate }) {
   };
 
   // drag end: compute absolute coords relative to container and persist
-  const handleDragEnd = (e, _info, item) => {
-    const el = e.currentTarget;
+  const handleDragEnd = (e: React.DragEvent | MouseEvent | TouchEvent, _info: PanInfo, item: Item) => {
+    const el = e.currentTarget as HTMLDivElement;
     const container = containerRef.current;
     if (!el || !container) return;
 
@@ -109,7 +126,7 @@ export default function HeroSection({ onNavigate }) {
   };
 
   // helper scroll
-  const scrollToSection = (sectionId) => {
+  const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) element.scrollIntoView({ behavior: 'smooth' });
     if (onNavigate) onNavigate(sectionId);
@@ -134,8 +151,8 @@ export default function HeroSection({ onNavigate }) {
             animate={{ opacity: 1 }}
             onDragEnd={(e, info) => handleDragEnd(e, info, item)}
             onDoubleClick={() => {
-              // reset to initial responsive location
-              const containerRect = containerRef.current.getBoundingClientRect();
+              const containerRect = containerRef.current?.getBoundingClientRect();
+              if (!containerRect) return;
               const cw = containerRect.width;
               const ch = containerRect.height;
               const idx = itemsTemplate.findIndex(s => s.id === item.id);
@@ -147,7 +164,7 @@ export default function HeroSection({ onNavigate }) {
             onKeyDown={(e) => handleKeyDown(e, item)}
             tabIndex={0}
             role="button"
-            aria-label={`Draggable ${item.name}. Press arrow keys to move or Enter to open ${item.section}`}
+            aria-label={Draggable ${item.name}. Press arrow keys to move or Enter to open ${item.section}}
             className="absolute z-50 cursor-grab focus:ring-2 focus:ring-teal-300"
             style={{
               left: item.position?.x ?? 0,
@@ -236,5 +253,5 @@ export default function HeroSection({ onNavigate }) {
         <ChevronDown className="w-8 h-8" />
       </motion.div>
     </section>
-  );
+  );
 }
