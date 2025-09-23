@@ -1,509 +1,904 @@
-// FileUploader.tsx
-import React, { useRef, useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+/// <reference types="vite/client" />
+import React, { useRef, useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
   FileText,
-  Fish,
   CheckCircle,
   Loader2,
-  X,
   Dna,
-  XCircle
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from './login/AuthContext';
-
-interface SpeciesPrediction {
-  name: string;
-  scientificName: string;
-  phylum: string;
-  order: string;
-  genus: string;
-  class: string;
-  family: string;
-  species: string;
-  description: string;
-  confidence: number;
-}
+  XCircle,
+  Download,
+  Trash2,
+  Copy
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "./AuthContext";
 
 /* ---------------------------
-   Lightweight UI primitives
+   Configuration
    --------------------------- */
-const Card: React.FC<{ className?: string; children?: React.ReactNode }> = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-2xl shadow-lg ${className}`}>{children}</div>
-);
+const API_BASE: string =
+  (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_BASE) ||
+  (typeof process !== "undefined" && (process as any).env?.REACT_APP_API_BASE) ||
+  "http://localhost:8000";
 
-const CardHeader: React.FC<{ className?: string; children?: React.ReactNode }> = ({ children, className = '' }) => (
+const MAX_FILE_MB = 25;
+
+/* ---------------------------
+   Small UI primitives
+   --------------------------- */
+const Card: React.FC<{ className?: string; children?: React.ReactNode }> = ({ children, className = "" }) => (
+  <div className={`bg-white rounded-2xl shadow-md ${className}`}>{children}</div>
+);
+const CardHeader: React.FC<{ className?: string; children?: React.ReactNode }> = ({ children, className = "" }) => (
   <div className={`px-6 py-4 rounded-t-2xl ${className}`}>{children}</div>
 );
-
-const CardContent: React.FC<{ className?: string; children?: React.ReactNode }> = ({ children, className = '' }) => (
+const CardContent: React.FC<{ className?: string; children?: React.ReactNode }> = ({ children, className = "" }) => (
   <div className={`px-6 py-8 ${className}`}>{children}</div>
 );
-
-const CardTitle: React.FC<{ className?: string; children?: React.ReactNode }> = ({ children, className = '' }) => (
+const CardTitle: React.FC<{ className?: string; children?: React.ReactNode }> = ({ children, className = "" }) => (
   <h3 className={`text-xl font-semibold ${className}`}>{children}</h3>
 );
-
-const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'outline' | 'solid' }> = ({
+const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "outline" | "solid" }> = ({
   children,
-  className = '',
-  variant = 'solid',
+  className = "",
+  variant = "solid",
   ...props
 }) => {
-  const base = 'inline-flex items-center justify-center gap-2 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-teal-300';
-  const solid = 'bg-teal-600 hover:bg-teal-700 text-white';
-  const outline = 'bg-transparent border border-teal-600 text-teal-600 hover:bg-teal-50';
+  const base = "inline-flex items-center justify-center gap-2 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-teal-300";
+  const solid = "bg-teal-600 hover:bg-teal-700 text-white shadow-sm";
+  const outline = "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50";
   return (
-    <button {...props} className={`${base} ${variant === 'solid' ? solid : outline} ${className}`}>
+    <button {...props} className={`${base} ${variant === "solid" ? solid : outline} ${className}`}>
       {children}
     </button>
   );
 };
-
-const Progress: React.FC<{ value: number; className?: string }> = ({ value, className = '' }) => (
+const Progress: React.FC<{ value: number; className?: string }> = ({ value, className = "" }) => (
   <div className={`w-full bg-slate-100 rounded-full h-2 overflow-hidden ${className}`}>
-    <div style={{ width: `${value}%` }} className="h-2 rounded-full bg-teal-600 transition-all" />
+    <div style={{ width: `${value}%` }} className="h-2 rounded-full bg-teal-600 transition-all duration-300" />
+  </div>
+);
+const Alert: React.FC<{ type?: "error" | "info"; children?: React.ReactNode; onClose?: () => void }> = ({ type = "error", children, onClose }) => (
+  <div className={`p-3 rounded-lg flex items-start justify-between ${type === "error" ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"}`}>
+    <div className="flex-1">{children}</div>
+    {onClose && <button onClick={onClose} className="ml-4 text-sm font-medium text-blue-700/80 hover:text-blue-900">Dismiss</button>}
   </div>
 );
 
-const Alert: React.FC<{ type?: 'error' | 'info'; children?: React.ReactNode }> = ({ type = 'error', children }) => (
-  <div className={`p-3 rounded-lg ${type === 'error' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>{children}</div>
-);
+/* ---------------------------
+   Helpers
+   --------------------------- */
+async function safeParseResponse(resp: Response): Promise<any> {
+  try {
+    const txt = await resp.clone().text();
+    try {
+      return JSON.parse(txt);
+    } catch {
+      return txt;
+    }
+  } catch {
+    return null;
+  }
+}
 
-const Badge: React.FC<{ children?: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium inline-block ${className}`}>{children}</div>
-);
+function parseCsvToRows(csvText: string): { headers: string[]; rows: Record<string, string>[] } {
+  const lines = csvText.split(/\r?\n/).filter((l) => l.trim() !== "");
+  if (!lines.length) return { headers: [], rows: [] };
+  const splitter = /,(?=(?:[^"]*"[^"]*")*[^"]*$)/;
+  const headers = lines[0].split(splitter).map((h) => h.replace(/^"|"$/g, "").trim());
+  const rows = lines.slice(1).map((line) => {
+    const parts = line.split(splitter).map((p) => p.replace(/^"|"$/g, "").trim());
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => (obj[h] = parts[i] ?? ""));
+    return obj;
+  });
+  return { headers, rows };
+}
 
-/* Small AuthModal fallback used in DNAAnalysis-style example */
-const AuthModal: React.FC<{ isOpen: boolean; onClose: () => void; onSuccess?: () => void }> = ({ isOpen, onClose, onSuccess }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h4 className="text-lg font-semibold mb-2">Please login to upload a file</h4>
-        <p className="text-sm text-gray-600 mb-4">
-          You must be logged in to upload and analyze files. Please log in to continue.
-        </p>
-        <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded bg-gray-200">Cancel</button>
-          <button
-            onClick={() => { onSuccess?.(); onClose(); }}
-            className="px-4 py-2 rounded bg-teal-600 text-white"
-          >
-            Login
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+function normalizeResultsToRows(results: any): Record<string, any>[] {
+  if (!results) return [];
+  if (Array.isArray(results) && results.length && typeof results[0] === "object") return results;
+  if (Array.isArray(results?.predictions)) return results.predictions;
+  if (typeof results === "string" && results.includes("\n") && results.includes(",")) return parseCsvToRows(results).rows;
+  for (const k of Object.keys(results || {})) {
+    const v = results[k];
+    if (typeof v === "string" && v.includes("\n") && v.includes(",")) {
+      const parsed = parseCsvToRows(v);
+      if (parsed.rows.length) return parsed.rows;
+    }
+    if (Array.isArray(v) && v.length && typeof v[0] === "object") return v;
+  }
+  if (typeof results === "object") return [results];
+  return [];
+}
+
+function formatTopProbs(tp: any): string {
+  try {
+    if (!tp) return "-";
+    if (typeof tp === "string") {
+      const tuples = Array.from(tp.matchAll(/\(([^()]+)\)/g)).map((m) => m[1]);
+      if (tuples.length) {
+        return tuples.map((t) => {
+          const nums = t.match(/-?\d+\.?\d*/g) ?? [];
+          const idx = nums[0] ?? "";
+          const prob = nums[1] ? `${(parseFloat(nums[1]) * 100).toFixed(1)}%` : "?";
+          return `${idx} (${prob})`;
+        }).join(", ");
+      }
+      return tp;
+    }
+    if (Array.isArray(tp)) {
+      return tp.map((it) => {
+        if (Array.isArray(it) && it.length >= 2) {
+          const label = String(it[0]);
+          const prob = typeof it[1] === "number" ? `${(it[1] * 100).toFixed(1)}%` : String(it[1]);
+          return `${label} (${prob})`;
+        }
+        if (typeof it === "object") {
+          const label = it.label ?? it[0] ?? it.name ?? "";
+          const probRaw = it.prob ?? it.probability ?? it[1] ?? null;
+          const prob = typeof probRaw === "number" ? `${(probRaw * 100).toFixed(1)}%` : String(probRaw);
+          return label ? `${label} (${prob})` : JSON.stringify(it);
+        }
+        return String(it);
+      }).join(", ");
+    }
+    return String(tp);
+  } catch {
+    return JSON.stringify(tp);
+  }
+}
+
+function prettyVisualLabel(filename: string) {
+  const n = filename.replace(/\.png$/i, "").replace(/_/g, " ");
+  return n.split(" ").map((w, i) => (i === 0 ? capitalize(w) : w)).join(" ");
+}
+function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function normalizeUrlForClient(url: string | undefined, rid?: string) {
+  if (!url) return "";
+  try {
+    // absolute URL?
+    // eslint-disable-next-line no-new
+    new URL(url);
+    return url;
+  } catch {
+    const base = API_BASE.replace(/\/+$/, "");
+    if (url.startsWith("/")) return `${base}${url}`;
+    if (rid) return `${base}/runs/${encodeURIComponent(rid)}/file/${encodeURIComponent(url)}`;
+    return `${base}/${url}`;
+  }
+}
 
 /* ---------------------------
-   Main FileUploader
+   Main component
    --------------------------- */
 const FileUploader: React.FC = () => {
+  // Inject Inter font once
+  useEffect(() => {
+    const id = "fileuploader-google-font-inter";
+    if (!document.getElementById(id)) {
+      const l = document.createElement("link");
+      l.id = id;
+      l.rel = "stylesheet";
+      l.href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap";
+      document.head.appendChild(l);
+    }
+  }, []);
+
   const navigate = useNavigate();
   const { user } = React.useContext(AuthContext)!;
 
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [prediction, setPrediction] = useState<SpeciesPrediction | null>(null);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-
-  const [selectedSpecies, setSelectedSpecies] = useState<string>('');
-  const [showPermissionPopup, setShowPermissionPopup] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // selected file (not necessarily uploaded)
+  const [fileSeqCount, setFileSeqCount] = useState<number | null>(null);
+  const [fileMime, setFileMime] = useState<string | null>(null);
+  const [fileSize, setFileSize] = useState<number | null>(null);
+  const [fileSelectedAt, setFileSelectedAt] = useState<string | null>(null);
 
   const [progress, setProgress] = useState(0);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
+  const [tableColumns, setTableColumns] = useState<string[]>([]);
+  const [tableRows, setTableRows] = useState<Record<string, any>[]>([]);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [modelUsed, setModelUsed] = useState<string | null>(null);
+  const [polling, setPolling] = useState(false);
+  const [visuals, setVisuals] = useState<Record<string, string>>({});
+
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const selectRef = useRef<HTMLSelectElement | null>(null);
-
-  // Sample predictions
-  const samplePredictions: SpeciesPrediction[] = [
-    {
-      name: 'Vinciguerria Lanternfish',
-      scientificName: 'Vinciguerria CBM:ZF:14736',
-      phylum: 'Chordata',
-      order: 'Stomiiformes',
-      genus: 'Vinciguerria',
-      class: 'Actinopterygii',
-      family: 'Phosichthyidae',
-      species: 'Cbm:zf:14736',
-      description: 'A deep-sea lanternfish species that produces bioluminescence for communication and camouflage in the dark ocean depths.',
-      confidence: 94.7
-    },
-    {
-      name: 'Pacific Blue Tang',
-      scientificName: 'Paracanthurus hepatus',
-      phylum: 'Chordata',
-      order: 'Perciformes',
-      genus: 'Paracanthurus',
-      class: 'Actinopterygii',
-      family: 'Acanthuridae',
-      species: 'P. hepatus',
-      description: 'A vibrant blue marine fish commonly found in coral reefs of the Pacific Ocean, known for its distinctive blue coloration and yellow fins.',
-      confidence: 97.2
-    },
-    {
-      name: 'Giant Pacific Octopus',
-      scientificName: 'Enteroctopus dofleini',
-      phylum: 'Mollusca',
-      order: 'Octopoda',
-      genus: 'Enteroctopus',
-      class: 'Cephalopoda',
-      family: 'Octopodidae',
-      species: 'E. dofleini',
-      description: 'The largest octopus species in the world, found in the coastal waters of the Pacific Ocean, capable of remarkable camouflage and problem-solving abilities.',
-      confidence: 91.8
-    }
-  ];
-
-  const speciesOptions: string[] = [
-    'Homo sapiens (modern humans)',
-    'Homo neanderthalensis (Neanderthals)',
-    'Homo erectus (early human ancestor)',
-    'Homo habilis (early tool user)',
-    'Australopithecus afarensis (“Lucy,” early hominin)',
-    'Pan troglodytes (chimpanzee)',
-    'Gorilla gorilla (western gorilla)',
-    'Canis lupus (gray wolf)',
-    'Felis catus (domestic cat)',
-    'Elephas maximus (Asian elephant)',
-    'Gallus gallus domesticus (domestic chicken)',
-    'Columba livia (rock pigeon)',
-    'Crocodylus niloticus (Nile crocodile)',
-    'Delphinus delphis (common dolphin)',
-    'Carcharodon carcharias (great white shark)',
-    'Octopus vulgaris (common octopus)',
-    'Oryza sativa (rice)',
-    'Zea mays (maize/corn)',
-    'Arabidopsis thaliana (model plant species)',
-    'Saccharomyces cerevisiae (baker’s yeast)'
-  ];
-
-  const uploadAllowed = selectedSpecies === 'Homo sapiens (modern humans)';
-  const showGlow = uploadAllowed && !uploadedFile && !isProcessing && !prediction;
+  const abortPollingRef = useRef<{ abort: boolean }>({ abort: false });
 
   useEffect(() => {
-    // small cleanup if component unmounts
-    return () => setIsProcessing(false);
+    return () => { abortPollingRef.current.abort = true; };
   }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  function humanFileSize(bytes: number) {
+    const i = bytes === 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${["B", "KB", "MB", "GB"][i]}`;
+  }
+
+  function isImageFile(file: File) {
+    return file.type.startsWith("image/") || /\.(jpe?g|png|gif)$/i.test(file.name);
+  }
+
+  /* Count FASTA sequences (used on selection so user can review before upload) */
+  function countFastaSequences(file: File): Promise<number> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const txt = String(reader.result ?? "");
+        const lines = txt.split(/\r?\n/);
+        const count = lines.reduce((acc, line) => acc + (line.trim().startsWith(">") ? 1 : 0), 0);
+        if (count > 0) return resolve(count);
+        const hasContent = txt.split(/\r?\n/).some((l) => l.trim().length > 0);
+        return resolve(hasContent ? 1 : 0);
+      };
+      reader.onerror = () => resolve(0);
+      reader.readAsText(file);
+    });
+  }
+
+  /* When user selects/drops a file, set selectedFile and compute details,
+     then automatically start upload.
+  */
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
     setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (!files[0]) return;
-
-    if (!uploadAllowed) {
-      setShowPermissionPopup(true);
-      return;
+    const file = Array.from(e.dataTransfer.files)[0];
+    if (!file) return;
+    setSelectedFile(file);
+    setFileMime(file.type || "unknown");
+    setFileSize(file.size || null);
+    setFileSelectedAt(new Date().toLocaleString());
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (["fasta", "fa", "fastq", "fq", "txt"].includes(ext) || file.type === "text/plain") {
+      const cnt = await countFastaSequences(file);
+      setFileSeqCount(cnt);
+    } else {
+      setFileSeqCount(1);
     }
-    handleFile(files[0]);
+    // auto-upload immediately
+    doUpload(file);
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!uploadAllowed) {
-      setShowPermissionPopup(true);
-      if (inputRef.current) inputRef.current.value = '';
-      return;
+    setSelectedFile(file);
+    setFileMime(file.type || "unknown");
+    setFileSize(file.size || null);
+    setFileSelectedAt(new Date().toLocaleString());
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (["fasta", "fa", "fastq", "fq", "txt"].includes(ext) || file.type === "text/plain") {
+      const cnt = await countFastaSequences(file);
+      setFileSeqCount(cnt);
+    } else {
+      setFileSeqCount(1);
     }
-    handleFile(file);
+    // auto-upload immediately
+    doUpload(file);
   };
 
-  const handleSelectButtonClick = () => {
-    if (!uploadAllowed) {
-      setShowPermissionPopup(true);
-      return;
-    }
-    inputRef.current?.click();
-  };
-
-  const handleFile = (file: File) => {
-    setUploadedFile(file);
+  /* Core upload (unchanged) — called automatically on select/drop */
+  const doUpload = async (file: File) => {
+    setError("");
+    setWarning("");
+    setTableRows([]);
+    setTableColumns([]);
     setIsProcessing(true);
-    setPrediction(null);
-    setError('');
-    setProgress(5);
+    setProgress(2);
+    abortPollingRef.current.abort = false;
+    setVisuals({});
 
-    // simulate upload + analysis progress
-    let p = 5;
-    const interval = setInterval(() => {
-      p = Math.min(95, p + Math.floor(Math.random() * 12));
-      setProgress(p);
-    }, 450);
+    try {
+      const requestedK = 10;
+      let seqCount = 0;
+      const name = file.name || "";
+      const ext = name.split(".").pop()?.toLowerCase() ?? "";
 
-    // simulate processing time
-    setTimeout(() => {
-      clearInterval(interval);
-      setProgress(100);
-      // pick a random prediction
-      const randomPrediction = samplePredictions[Math.floor(Math.random() * samplePredictions.length)];
-      setPrediction(randomPrediction);
+      if (["fasta", "fa", "fastq", "fq", "txt"].includes(ext) || file.type === "text/plain") {
+        seqCount = await countFastaSequences(file);
+      } else {
+        seqCount = 1;
+      }
+
+      if (seqCount === 0) throw new Error("Uploaded file appears empty or unreadable. Please check the file and try again.");
+
+      const safeK = Math.max(1, Math.min(requestedK, seqCount));
+      if (safeK < requestedK) setWarning(`Requested k=${requestedK} reduced to k=${safeK} because only ${seqCount} sample(s) were detected.`);
+
+      const fd = new FormData();
+      fd.append("raw_fasta", file);
+      fd.append("cluster_method", "kmeans");
+      fd.append("kmeans_n", String(Math.max(1, safeK)));
+      fd.append("threshold", "0.7");
+
+      try {
+        const modelsResp = await fetch(`${API_BASE}/models`);
+        if (modelsResp.ok) {
+          const modelsJson = await modelsResp.json();
+          if (Array.isArray(modelsJson?.models) && modelsJson.models.length > 0) {
+            fd.set("model_run_id", modelsJson.models[0].run_id);
+          }
+        }
+      } catch { /* ignore */ }
+
+      const resp = await fetch(`${API_BASE}/predict`, { method: "POST", body: fd });
+      if (!resp.ok) {
+        const parsed = await safeParseResponse(resp);
+        const bodyMsg = parsed && typeof parsed === "object" ? (parsed.detail ?? JSON.stringify(parsed)) : parsed;
+        throw new Error(`Upload failed: ${bodyMsg ?? `HTTP ${resp.status}`}`);
+      }
+
+      const payload = await resp.json();
+      const rid = payload.run_id;
+      if (!rid) throw new Error("Server did not return run_id for prediction job.");
+      setRunId(rid);
+      setModelUsed(payload.model_used ?? null);
+      setProgress(10);
+
+      startPollingForResults(rid);
+    } catch (err: any) {
+      setError(err?.message ?? "Upload failed.");
       setIsProcessing(false);
-      setTimeout(() => setProgress(0), 600);
-    }, 2600);
+      setProgress(0);
+    }
   };
+
+  /* Polling and results parsing (same as before) */
+  const startPollingForResults = async (rid: string) => {
+    setPolling(true);
+    setProgress(10);
+    abortPollingRef.current.abort = false;
+
+    try {
+      const maxAttempts = 180;
+      let attempts = 0;
+      while (!abortPollingRef.current.abort && attempts < maxAttempts) {
+        attempts += 1;
+        const res = await fetch(`${API_BASE}/runs/${encodeURIComponent(rid)}`);
+        if (res.status === 200) {
+          const ctype = (res.headers.get("content-type") || "");
+          const payload = ctype.includes("application/json") ? await res.json() : await safeParseResponse(res);
+          const jobStatus = payload?.job_details?.status;
+
+          if (jobStatus === "failed") {
+            const snippet = payload.job_details?.error ?? "Job failed - check server logs.";
+            throw new Error(typeof snippet === "string" ? snippet : JSON.stringify(snippet));
+          }
+
+          if (jobStatus === "completed") {
+            setProgress(100);
+            setPolling(false);
+            setRunId(rid);
+            setModelUsed(payload.job_details?.parameters?.model_run_id ?? payload.results?.model_used ?? null);
+
+            // --- MEDOID parsing: try multiple strategies (payload, medoid endpoint, CSV file, fallback) ---
+            let medoidRows: Record<string, any>[] = [];
+            try {
+              medoidRows = await (async () => {
+                if (Array.isArray(payload?.results?.medoid_predictions) && payload.results.medoid_predictions.length > 0) {
+                  return payload.results.medoid_predictions;
+                }
+                try {
+                  const jsonRes = await fetch(`${API_BASE}/runs/${encodeURIComponent(rid)}/medoid/json`);
+                  if (jsonRes.ok) {
+                    const j = await jsonRes.json();
+                    const arr = j?.medoid_predictions;
+                    if (Array.isArray(arr) && arr.length) return arr;
+                  }
+                } catch { /* ignore */ }
+
+                const outputs: string[] = Array.isArray(payload?.results?.files) ? payload.results.files :
+                  (Array.isArray(payload?.job_details?.outputs) ? payload.job_details.outputs : []);
+
+                let medoidCandidate = outputs.find((fn: string) => typeof fn === 'string' && fn.toLowerCase().includes('medoid') && fn.toLowerCase().endsWith('.csv'))
+                  || outputs.find((fn: string) => typeof fn === 'string' && fn.toLowerCase().endsWith('.csv'));
+
+                const defaultNames = ["cluster_medoid_predictions.csv", "medoid_predictions.csv"];
+                if (!medoidCandidate) {
+                  for (const n of defaultNames) {
+                    try {
+                      const attemptUrl = `${API_BASE}/runs/${encodeURIComponent(rid)}/file/${encodeURIComponent(n)}`;
+                      const attemptResp = await fetch(attemptUrl);
+                      if (attemptResp.ok) { medoidCandidate = n; break; }
+                    } catch { /* ignore */ }
+                  }
+                }
+
+                if (medoidCandidate) {
+                  try {
+                    const url = `${API_BASE}/runs/${encodeURIComponent(rid)}/file/${encodeURIComponent(medoidCandidate)}`;
+                    const resp = await fetch(url);
+                    if (resp.ok) {
+                      const txt = await resp.text();
+                      const parsed = parseCsvToRows(txt);
+                      if (parsed.rows && parsed.rows.length > 0) return parsed.rows;
+                    }
+                  } catch (e) {
+                    console.warn("Failed to fetch/parse medoid CSV:", e);
+                  }
+                }
+                return [];
+              })();
+            } catch (e) {
+              console.debug("fetchMedoidRowsFromPayload failed:", e);
+            }
+
+            if (medoidRows.length > 0) {
+              const formatted = medoidRows.map((r: any) => {
+                const copy: Record<string, any> = { ...r };
+                const confKeys = ["confidence", "conf", "prob", "probability"];
+                for (const k of confKeys) {
+                  if (copy[k] !== undefined && copy[k] !== null) {
+                    const num = typeof copy[k] === "number" ? copy[k] : parseFloat(String(copy[k]));
+                    if (!Number.isNaN(num)) {
+                      copy.confidence = `${(num * 100).toFixed(1)}%`;
+                    } else {
+                      copy.confidence = String(copy[k]);
+                    }
+                    if (k !== "confidence") delete copy[k];
+                    break;
+                  }
+                }
+                if (Array.isArray(copy.top_labels)) copy.top_labels = copy.top_labels.join(", ");
+                if (typeof copy.top_labels === "string") copy.top_labels = copy.top_labels.replace(/^"|"$/g, "");
+                if (copy.top_probs) copy.top_probs = typeof copy.top_probs === "string" ? copy.top_probs : formatTopProbs(copy.top_probs);
+                if (!copy.predicted_species && (copy.species || copy.prediction || copy.label)) {
+                  copy.predicted_species = copy.species ?? copy.prediction ?? copy.label;
+                }
+                return copy;
+              });
+
+              const preferred = ["cluster", "medoid_index", "medoid_id", "predicted_species", "confidence", "top_probs", "top_labels"];
+              const colsSet = new Set<string>();
+              preferred.forEach(k => { if (formatted[0] && k in formatted[0]) colsSet.add(k); });
+              Object.keys(formatted[0] || {}).forEach(k => colsSet.add(k));
+              setTableColumns(Array.from(colsSet));
+              setTableRows(formatted);
+            } else {
+              const rows = normalizeResultsToRows(payload.results);
+              if (rows.length === 0) {
+                setError("Prediction finished but no tabular results were found.");
+              } else {
+                const cols = Array.from(rows.reduce((acc: Set<string>, r: any) => { Object.keys(r).forEach((k) => acc.add(k)); return acc; }, new Set<string>()));
+                setTableColumns(cols);
+                setTableRows(rows);
+              }
+            }
+
+            // visuals: build absolute URLs for client
+            const visualsFromPayload = payload.results?.visualizations ?? payload.results?.visuals ?? payload.results?.images;
+            const built: Record<string,string> = {};
+            if (visualsFromPayload && typeof visualsFromPayload === "object") {
+              Object.entries(visualsFromPayload).forEach(([k, url]) => {
+                const u = typeof url === "string" ? url : String(url);
+                built[k] = normalizeUrlForClient(u, rid);
+              });
+            } else {
+              const candidates = ["cluster_scatter.png", "species_abundance_bar.png", "species_composition_pie.png"];
+              candidates.forEach((fn) => { built[fn] = normalizeUrlForClient(fn, rid); });
+            }
+            setVisuals(built);
+
+            setIsProcessing(false);
+            return;
+          }
+
+          setProgress((p) => Math.min(95, p + 4));
+        } else if (res.status === 404) {
+          setProgress((p) => Math.min(90, p + 3));
+        } else {
+          const parsed = await safeParseResponse(res);
+          const detail = (parsed && typeof parsed === "object" && parsed.detail) ? parsed.detail : parsed ?? `HTTP ${res.status}`;
+          throw new Error(`Server responded ${res.status}: ${detail}`);
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+
+      if (abortPollingRef.current.abort) {
+        setError("Polling aborted.");
+        setPolling(false);
+        setIsProcessing(false);
+      } else {
+        setError("Timed out waiting for prediction results. Try again later.");
+        setPolling(false);
+        setIsProcessing(false);
+      }
+    } catch (err: any) {
+      setError(err?.message ?? "An unknown error occurred while polling for results.");
+      setPolling(false);
+      setIsProcessing(false);
+    }
+  };
+
+  /* UI helpers */
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => setIsDragging(false);
+
+  const handleSelectButtonClick = () => inputRef.current?.click();
 
   const resetUpload = () => {
-    setUploadedFile(null);
-    setPrediction(null);
+    if (polling) { abortPollingRef.current.abort = true; setPolling(false); }
+    setSelectedFile(null);
+    setFileSeqCount(null);
+    setFileMime(null);
+    setFileSize(null);
+    setFileSelectedAt(null);
+    setTableRows([]);
+    setTableColumns([]);
     setIsProcessing(false);
     setProgress(0);
-    setError('');
-    if (inputRef.current) inputRef.current.value = '';
+    setError("");
+    setWarning("");
+    setRunId(null);
+    setVisuals({});
+    if (inputRef.current) inputRef.current.value = "";
   };
 
-  // permission popup close focus select
-  const closePopup = () => {
-    setShowPermissionPopup(false);
-    setTimeout(() => selectRef.current?.focus(), 50);
+  const downloadResultsZip = async () => {
+    if (!runId) return;
+    try {
+      const url = `${API_BASE}/runs/${runId}/download`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const parsed = await safeParseResponse(res);
+        throw new Error(parsed ?? `Failed to download results: ${res.statusText}`);
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      const href = URL.createObjectURL(blob);
+      a.href = href;
+      a.download = `${runId}_results.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch (err: any) {
+      setError(err?.message ?? "Download failed.");
+    }
   };
 
+  const copyRunIdToClipboard = async () => {
+    if (!runId) return;
+    try {
+      await navigator.clipboard.writeText(runId);
+      setWarning("Run ID copied to clipboard");
+      setTimeout(() => setWarning(""), 2000);
+    } catch {
+      setError("Failed to copy run id to clipboard");
+    }
+  };
+
+  /* download file details as JSON */
+  const downloadFileDetails = () => {
+    if (!selectedFile) return;
+    const details = {
+      filename: selectedFile.name,
+      mimeType: fileMime ?? selectedFile.type ?? "unknown",
+      sizeBytes: fileSize ?? selectedFile.size,
+      sizeHuman: fileSize ? humanFileSize(fileSize) : humanFileSize(selectedFile.size),
+      detectedSequences: fileSeqCount,
+      selectedAt: fileSelectedAt,
+      runId: runId,
+      modelUsed: modelUsed,
+      progress: progress,
+    };
+    const blob = new Blob([JSON.stringify(details, null, 2)], { type: "application/json" });
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = href;
+    const baseName = selectedFile.name.replace(/\.[^/.]+$/, "");
+    a.download = `${baseName}_details.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(href);
+  };
+
+  /* visual order (ensure 3 slots) */
+  const visualOrder = ["cluster_scatter.png", "species_abundance_bar.png", "species_composition_pie.png"];
+
+  // Button enablement:
+  const canDownloadDetails = (tableRows.length > 0) || (!!runId && !isProcessing);
+
+  /* Render */
   return (
-    <section id="analysis" className="py-24 bg-gradient-to-b from-white to-slate-50">
-      <div className="max-w-4xl mx-auto px-6">
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-10">
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-2">Marine Species Identification</h2>
-          <p className="text-lg text-slate-600 max-w-3xl mx-auto">
-            Upload an image or a DNA sequence file to identify species using our prediction pipeline.
+    <section
+      id="analysis"
+      className="py-12 bg-gradient-to-b from-white to-slate-50"
+      style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial" }}
+    >
+      <div className="max-w-7xl mx-auto px-6">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
+          <h2 className="text-3xl font-semibold text-slate-900 mb-2">Sequence & Image Analysis</h2>
+          <p className="text-sm text-slate-600 max-w-2xl mx-auto">
+            Upload an image (JPG/PNG) or DNA sequence (FASTA/TXT). We run clustering & species-matching against our curated reference set.
           </p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-teal-500 to-emerald-500 text-white">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-full grid place-items-center">
-                  <Dna className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-white">Sequence / Image Analysis</CardTitle>
-                  <div className="text-sm text-white/80">Secure & audited species identification</div>
-                </div>
+        <Card className="overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-teal-500 to-emerald-500 text-white">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-full grid place-items-center"><Dna className="w-6 h-6 text-white" /></div>
+              <div>
+                <CardTitle className="text-white">Upload & Analyze</CardTitle>
+                <div className="text-sm text-white/90">Secure, auditable species identification</div>
               </div>
-            </CardHeader>
+            </div>
+          </CardHeader>
 
-            <CardContent>
-              {/* Select row */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Select scientific name</label>
-
-                <div className="relative">
-                  <div
-                    className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-shadow duration-200 ${selectedSpecies ? 'ring-2 ring-blue-200 border-blue-200' : 'border-slate-200'}`}
-                    onClick={() => selectRef.current?.focus()}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="flex-1 min-w-0">
-                      {!selectedSpecies ? (
-                        <div className="text-sm text-slate-400">Choose a scientific name…</div>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <div className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-medium">
-                            {selectedSpecies.split('(')[0].trim()}
-                          </div>
-                          <div className="truncate text-sm text-slate-700">{selectedSpecies}</div>
-                        </div>
-                      )}
+          <CardContent>
+            {/* grid: 5 columns on md, results take 3, visuals take 2 */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              {/* Left column: uploader + details + results  (span 3) */}
+              <div className="md:col-span-3 space-y-6">
+                {/* Upload area */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`relative border-2 rounded-2xl p-6 transition-transform cursor-pointer ${isDragging ? "border-teal-400 bg-teal-50 scale-101 shadow-lg" : "border-slate-200 bg-white hover:shadow"} `}
+                  onClick={() => inputRef.current?.click()}
+                  aria-label="File upload area"
+                  role="button"
+                >
+                  <input ref={inputRef} type="file" onChange={handleFileSelect} accept=".jpg,.jpeg,.png,.fasta,.txt,.fa,.fq,.fastq" className="hidden" />
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 bg-teal-50 rounded-lg grid place-items-center shrink-0">
+                      <Upload className="w-7 h-7 text-teal-600" />
                     </div>
 
-                    <div className="ml-4 flex items-center gap-3">
-                      <div className={`text-xs font-medium px-2 py-1 rounded ${uploadAllowed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {uploadAllowed ? 'Allowed' : 'Restricted'}
+                    <div className="flex-1">
+                      <h3 className="text-lg font-medium text-slate-900">Drop your file here or click to browse</h3>
+                      <p className="text-sm text-slate-500">Supports JPG, PNG for images, or FASTA / TXT for sequence data. Max {MAX_FILE_MB} MB.</p>
+
+                      <div className="mt-4 flex gap-3 items-center">
+                        <Button onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }} className="px-4 py-2"><FileText className="w-4 h-4" /> Select</Button>
+                        <Button variant="outline" onClick={(e) => { e.stopPropagation(); if (!user) navigate('/login'); else setWarning("You are signed in"); }} className="px-3 py-2">
+                          {user ? "Signed in" : "Request access"}
+                        </Button>
+
+                        {selectedFile && <Button variant="outline" onClick={(e) => { e.stopPropagation(); resetUpload(); }} className="px-3 py-2"><Trash2 className="w-4 h-4" /> Clear</Button>}
                       </div>
-                      {selectedSpecies && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedSpecies(''); selectRef.current?.focus(); }}
-                          className="p-1 rounded-md hover:bg-slate-100"
-                          aria-label="Clear selection"
-                        >
-                          <X className="w-4 h-4 text-slate-500" />
-                        </button>
+                    </div>
+
+                    <div className="w-44 text-right">
+                      {selectedFile ? (
+                        <div className="text-xs text-slate-700">
+                          <div className="font-medium truncate">{selectedFile.name}</div>
+                          <div className="text-2xs text-slate-400">{fileSize ? humanFileSize(fileSize) : "-"}</div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-slate-400">No file selected</div>
                       )}
                     </div>
                   </div>
 
-                  <select
-                    ref={selectRef}
-                    aria-label="Scientific name select"
-                    value={selectedSpecies}
-                    onChange={(e) => setSelectedSpecies(e.target.value)}
-                    className="absolute inset-0 w-full opacity-0 pointer-events-auto"
-                  >
-                    <option value="">-- Choose a scientific name --</option>
-                    {speciesOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
+                  <AnimatePresence>
+                    {isDragging && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-white/30 rounded-2xl pointer-events-none grid place-items-center">
+                        <div className="text-lg font-semibold text-teal-700">Release to upload</div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                <p className="text-sm text-slate-500 mt-2">
-                  Only <strong>Homo sapiens (modern humans)</strong> enables uploads (demo permission).
-                </p>
-              </div>
-
-              {/* Upload area */}
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${isDragging ? 'border-teal-400 bg-teal-50' : 'border-slate-200'} ${showGlow ? 'ring-4 ring-blue-100 shadow-lg' : ''}`}
-              >
-                <input ref={inputRef} type="file" onChange={handleFileSelect} accept=".jpg,.jpeg,.png,.fasta,.txt,.fa,.fq,.fastq" className="hidden" />
-                <div className="w-14 h-14 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Upload className={`w-7 h-7 ${uploadAllowed ? 'text-teal-600' : 'text-slate-400'}`} />
-                </div>
-                <h4 className="text-lg font-semibold text-slate-900 mb-1">Drop your file here or click to browse</h4>
-                <p className="text-sm text-slate-500 mb-4">Supports images (JPG, PNG) and DNA sequence files (FASTA, TXT)</p>
-
-                <div className="flex items-center justify-center gap-3">
-                  <Button onClick={() => { if (!uploadAllowed) { setShowPermissionPopup(true); } else inputRef.current?.click(); }} className="px-6 py-2" disabled={!uploadAllowed}>
-                    <FileText className="w-4 h-4" />
-                    {uploadAllowed ? 'Select File' : 'Select File (disabled)'}
-                  </Button>
-
-                  {/* Request Access: only show when user is NOT logged in */}
-                  {!user ? (
-                    <Button variant="outline" onClick={() => navigate('/login')} className="px-4 py-2">
-                      Request Access
-                    </Button>
-                  ) : null}
-                </div>
-
-                {!uploadAllowed && <div className="mt-3 text-sm text-red-600">Please select <strong>Homo sapiens (modern humans)</strong> to enable upload.</div>}
-              </div>
-
-              {/* Uploading / Processing state */}
-              <AnimatePresence>
-                {(uploadedFile || isProcessing) && !prediction && (
-                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="text-center py-8">
-                    <div className="mb-4">
-                      {isProcessing ? <Loader2 className="w-14 h-14 text-teal-600 mx-auto animate-spin" /> : <FileText className="w-14 h-14 text-green-600 mx-auto" />}
+                {/* DETAILS card (Download File Details button replaces Upload) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                  <div className="md:col-span-2 rounded-lg border bg-white p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-slate-700">File Details</div>
+                        <div className="text-xs text-slate-400">Download metadata after analysis completes</div>
+                      </div>
+                      <div className="text-xs text-slate-400">{fileSelectedAt ?? ""}</div>
                     </div>
-                    <h4 className="text-lg font-semibold text-slate-900 mb-1">{isProcessing ? 'Analyzing specimen...' : 'File uploaded'}</h4>
-                    <p className="text-sm text-slate-600 mb-4">{isProcessing ? 'Processing and matching against database...' : uploadedFile?.name}</p>
-                    {isProcessing && (
-                      <div className="max-w-md mx-auto">
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-slate-600">Analyzing</span>
-                          <span className="text-slate-600">{progress}%</span>
-                        </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs text-slate-500">Filename</div>
+                        <div className="text-sm text-slate-700 truncate">{selectedFile?.name ?? "-"}</div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-slate-500">Type</div>
+                        <div className="text-sm text-slate-700 truncate">{fileMime ?? "-"}</div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-slate-500">Size</div>
+                        <div className="text-sm text-slate-700">{fileSize ? humanFileSize(fileSize) : "-"}</div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs text-slate-500">Detected sequences</div>
+                        <div className="text-sm text-slate-700">{fileSeqCount !== null ? String(fileSeqCount) : "-"}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex gap-3">
+                      {/* Smaller / lower-height buttons for File Details area */}
+                      <button
+                        onClick={downloadFileDetails}
+                        disabled={!canDownloadDetails}
+                        className={`inline-flex items-center justify-center gap-2 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-teal-300 px-2 py-1 text-sm flex-1 ${
+                          canDownloadDetails ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                        }`}
+                        aria-disabled={!canDownloadDetails}
+                      >
+                        <Download className="w-4 h-4" /> Download File Details
+                      </button>
+
+                      <button
+                        onClick={resetUpload}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-teal-300 px-2 py-1 text-sm bg-slate-700 text-white flex-1"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* compact info card */}
+                  <div className="rounded-lg border bg-white p-3 text-xs text-slate-600 flex flex-col justify-between">
+                    <div>
+                      <div className="font-medium mb-1">Quick notes</div>
+                      <div>Files are processed securely on the server.</div>
+                      <div className="mt-2">Tip: upload clear photos or properly formatted FASTA files.</div>
+                    </div>
+                    <div className="mt-3 text-xs text-slate-400">Main project section — results will appear below.</div>
+                  </div>
+                </div>
+
+                {/* processing / mini-progress */}
+                <AnimatePresence>
+                  {(selectedFile || isProcessing) && !tableRows.length && (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="text-center py-6">
+                      <div className="mb-3">{isProcessing ? <Loader2 className="w-12 h-12 text-teal-600 mx-auto animate-spin" /> : <FileText className="w-12 h-12 text-slate-400 mx-auto" />}</div>
+                      <div className="text-sm text-slate-700 mb-2">{isProcessing ? "Analyzing specimen..." : "Ready"}</div>
+                      <div className="max-w-xl mx-auto">
+                        <div className="flex justify-between text-sm mb-2"><span className="text-slate-600">Progress</span><span className="text-slate-600">{progress}%</span></div>
                         <Progress value={progress} />
                       </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-              {/* Prediction / Results */}
-              <AnimatePresence>
-                {prediction && (
-                  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} className="space-y-6">
-                    <div className="flex items-center gap-3 justify-center text-green-600">
-                      <CheckCircle className="w-6 h-6" />
-                      <h4 className="text-2xl font-bold text-slate-900">Species Identified!</h4>
-                    </div>
-
-                    <div className="bg-gradient-to-r from-blue-50 to-teal-50 rounded-xl p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="bg-blue-100 p-3 rounded-full">
-                          <Fish className="w-6 h-6 text-blue-600" />
+                {/* results table (wider) */}
+                <div>
+                  {tableRows.length > 0 && (
+                    <Card className="overflow-hidden">
+                      <CardContent>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3 text-green-600"><CheckCircle className="w-6 h-6" /><h4 className="text-lg font-semibold text-slate-900">Prediction results</h4></div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={downloadResultsZip} className="px-3 py-1"><Download className="w-4 h-4" /> Download</Button>
+                            <Button onClick={resetUpload} className="px-3 py-1 bg-slate-700">New</Button>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <h5 className="text-xl font-bold text-slate-900 mb-1">{prediction.scientificName}</h5>
-                          <Badge>{Math.round(prediction.confidence)}% confidence</Badge>
+
+                        <div className="overflow-x-auto rounded-lg border">
+                          <table className="min-w-[900px] md:min-w-full text-sm">
+                            <thead className="bg-slate-50 sticky top-0">
+                              <tr>
+                                {tableColumns.map((col) => <th key={col} className="px-4 py-2 text-left font-medium text-slate-600">{col}</th>)}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tableRows.map((row, i) => (
+                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                                  {tableColumns.map((col) => (
+                                    <td key={col} className="px-4 py-2 align-top max-w-xs whitespace-normal">
+                                      {col === "top_probs" ? (typeof row[col] === "string" ? row[col] : formatTopProbs(row[col])) :
+                                        (col === "confidence" && typeof row[col] === "number" ? `${(row[col]*100).toFixed(1)}%` :
+                                          renderCellValue(row[col]))}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="bg-slate-50 rounded-xl p-4">
-                        <h6 className="font-bold text-slate-900 mb-2">Taxonomic Classification</h6>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between"><span className="text-slate-600">Phylum:</span><span className="font-medium">{prediction.phylum}</span></div>
-                          <div className="flex justify-between"><span className="text-slate-600">Class:</span><span className="font-medium">{prediction.class}</span></div>
-                          <div className="flex justify-between"><span className="text-slate-600">Order:</span><span className="font-medium">{prediction.order}</span></div>
-                          <div className="flex justify-between"><span className="text-slate-600">Family:</span><span className="font-medium">{prediction.family}</span></div>
-                          <div className="flex justify-between"><span className="text-slate-600">Genus:</span><span className="font-medium">{prediction.genus}</span></div>
-                          <div className="flex justify-between"><span className="text-slate-600">Species:</span><span className="font-medium">{prediction.species}</span></div>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-50 rounded-xl p-4">
-                        <h6 className="font-bold text-slate-900 mb-2">Description</h6>
-                        <p className="text-sm text-slate-600 leading-relaxed">{prediction.description}</p>
-                      </div>
-                    </div>
-
-                    <div className="text-center">
-                      <Button onClick={resetUpload} className="px-6 py-2 bg-slate-700">Upload Another File</Button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Error area */}
-              <AnimatePresence>
-                {error && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                    <div className="mt-4">
-                      <Alert type="error">
-                        <div className="flex items-center gap-2">
-                          <XCircle className="w-4 h-4" />
-                          <div className="text-sm">{error}</div>
-                        </div>
-                      </Alert>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Permission popup overlay */}
-      <AnimatePresence>
-        {showPermissionPopup && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 grid place-items-center bg-black/40">
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h4 className="text-lg font-semibold mb-2">Select required scientific name</h4>
-              <p className="text-sm text-gray-700 mb-4">To upload a file you must select <strong>Homo sapiens (modern humans)</strong> from the dropdown.</p>
-              <div className="flex justify-end gap-3">
-                <button onClick={() => { closePopup(); }} className="px-4 py-2 rounded bg-gray-200">OK</button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
-          setShowAuthModal(false);
-          // For demo: allow upload by selecting Homo sapiens automatically
-          setSelectedSpecies('Homo sapiens (modern humans)');
-        }}
-      />
+              {/* Right column: visuals expanded (span 2) */}
+              <div className="md:col-span-2 space-y-4">
+                <Card className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-slate-700">Run</div>
+                      <div className="text-xs text-slate-500">{isProcessing ? "Running" : runId ? "Completed" : "Idle"}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-400">Progress</div>
+                      <div className="text-sm font-semibold">{progress}%</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 text-xs text-slate-500">
+                    <div className="text-xs text-slate-500">Run ID</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="truncate text-sm font-mono text-slate-700">{runId ?? "-"}</div>
+                      <button onClick={copyRunIdToClipboard} title="Copy run id" className="p-1 rounded hover:bg-slate-50"><Copy className="w-4 h-4 text-slate-500" /></button>
+                    </div>
+
+                    <div className="pt-3 border-t mt-3">
+                      <div className="text-xs text-slate-500">Model used</div>
+                      <div className="text-sm truncate mt-1">{modelUsed ?? "-"}</div>
+                    </div>
+
+                    <div className="pt-3 flex gap-2">
+                      <Button variant="outline" onClick={downloadResultsZip} className="flex-1 px-2 py-1"><Download className="w-4 h-4" /> Download</Button>
+                      <Button onClick={resetUpload} className="flex-1 px-2 py-1 bg-slate-700">Reset</Button>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Visuals: vertical stack of 3 images; object-contain */}
+                <Card className="p-3">
+                  <div className="text-sm font-medium text-slate-700 mb-3">Visuals</div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {visualOrder.map((name) => {
+                      const fallbackKey = Object.keys(visuals).find(k => k.toLowerCase().includes(name.split('.')[0]));
+                      const finalUrl = visuals[name] ?? (fallbackKey ? visuals[fallbackKey] : undefined);
+
+                      return (
+                        <div key={name} className="rounded overflow-hidden border bg-white">
+                          {finalUrl ? (
+                            <a href={finalUrl} target="_blank" rel="noreferrer" className="block">
+                              <div className="w-full h-48 bg-slate-50 flex items-center justify-center overflow-hidden">
+                                {/* object-contain to avoid cropping */}
+                                <img src={finalUrl} alt={name} className="max-h-full w-full object-contain" />
+                              </div>
+                              <div className="p-3 text-sm text-slate-600">{prettyVisualLabel(name)}</div>
+                            </a>
+                          ) : (
+                            <div className="w-full h-48 bg-slate-50 flex items-center justify-center">
+                              <div className="text-xs text-slate-400">No visual available: {prettyVisualLabel(name)}</div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {error && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+                  <div className="mt-4"><Alert type="error"><div className="flex items-center gap-2"><XCircle className="w-4 h-4" /><div className="text-sm">{error}</div></div></Alert></div>
+                </motion.div>
+              )}
+              {warning && !error && (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="mt-4"><Alert type="info" onClose={() => setWarning("")}><div className="text-sm">{warning}</div></Alert></motion.div>
+              )}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      </div>
     </section>
   );
 };
+
+/* small renderers */
+function renderCellValue(v: any) {
+  if (v === null || v === undefined) return "-";
+  if (typeof v === "number") return v;
+  if (typeof v === "boolean") return v ? "true" : "false";
+  if (Array.isArray(v)) return <div className="space-y-1">{v.map((it, i) => <div key={i} className="text-xs text-slate-700">{typeof it === "object" ? JSON.stringify(it) : String(it)}</div>)}</div>;
+  if (typeof v === "object") return <pre className="whitespace-pre-wrap text-xs">{JSON.stringify(v)}</pre>;
+  return String(v);
+}
 
 export default FileUploader;
