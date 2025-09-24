@@ -30,7 +30,7 @@ const Button: React.FC<ButtonProps> = ({ children, className = '', variant = 'de
   const gradient = variant === 'outline' ? '' : 'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600';
 
   return (
-    <button {...props} className={${base} ${outline} ${gradient} ${className}.trim()}>
+    <button {...props} className={`${base} ${outline} ${gradient} ${className}`.trim()}>
       {children}
     </button>
   );
@@ -164,7 +164,7 @@ export default function HeroSection({ onNavigate }: HeroSectionProps) {
             onKeyDown={(e) => handleKeyDown(e, item)}
             tabIndex={0}
             role="button"
-            aria-label={Draggable ${item.name}. Press arrow keys to move or Enter to open ${item.section}}
+            aria-label={`Draggable ${item.name}. Press arrow keys to move or Enter to open ${item.section}`}
             className="absolute z-50 cursor-grab focus:ring-2 focus:ring-teal-300"
             style={{
               left: item.position?.x ?? 0,
@@ -253,5 +253,5 @@ export default function HeroSection({ onNavigate }: HeroSectionProps) {
         <ChevronDown className="w-8 h-8" />
       </motion.div>
     </section>
-  );
+  );
 }

@@ -1,17 +1,33 @@
-// src/Navigation.jsx
-import React, { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext } from "react";
+import type React from "react";
 import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { Dna, Menu, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { AuthContext } from "./AuthContext";
+import { AuthContext } from "./login/AuthContext";
 
-export default function Navigation() {
+interface User {
+  name?: string;
+  email?: string;
+}
+
+interface AuthContextType {
+  user?: User | null;
+  logout?: () => Promise<void> | void;
+}
+
+interface NavItem {
+  label: string;
+  id: string;
+}
+
+export default function Navigation(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
-  const auth = useContext(AuthContext);
+  // Cast the imported AuthContext to the typed context for better typing here
+  const auth = useContext(AuthContext as unknown as React.Context<AuthContextType | null>);
   const user = auth?.user ?? null;
-  const logout = auth?.logout ?? (() => {});
+  const logoutFn = auth?.logout ?? (() => {});
   const isAuthenticated = !!user;
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -23,16 +39,16 @@ export default function Navigation() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const sanitizeDisplayName = (raw) => {
+  const sanitizeDisplayName = (raw?: string | null): string => {
     if (!raw) return "User";
     let base = raw.includes("@") ? raw.split("@")[0] : raw;
     base = base.split(" ")[0];
-    base = base.replace(/[\d_\-]+/g, "").trim();
+    base = base.replace(/[[\d_\-]+/g, "").trim();
     if (!base) return "User";
     return base.charAt(0).toUpperCase() + base.slice(1);
   };
 
-  const resolveRawUser = () => {
+  const resolveRawUser = (): string => {
     if (user) return user.name || user.email || "";
     try {
       const raw = localStorage.getItem("app.mock.user");
@@ -40,14 +56,16 @@ export default function Navigation() {
         const parsed = JSON.parse(raw);
         return parsed?.name || parsed?.email || "";
       }
-    } catch {}
+    } catch (e) {
+      // ignore parse errors
+    }
     return "";
   };
 
   const rawUserString = resolveRawUser();
   const displayName = sanitizeDisplayName(rawUserString);
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { label: "Home", id: "hero" },
     { label: "Gallery", id: "gallery" },
     { label: "Map", id: "map" },
@@ -56,7 +74,7 @@ export default function Navigation() {
     { label: "Analysis", id: "analysis" },
   ];
 
-  const scrollToSection = (sectionId) => {
+  const scrollToSection = (sectionId: string): void => {
     const el = document.getElementById(sectionId);
     const navEl = document.querySelector("nav");
     const navHeight = navEl?.getBoundingClientRect().height ?? 72;
@@ -71,12 +89,13 @@ export default function Navigation() {
     if (location.pathname !== "/") {
       navigate("/", { state: { scrollTo: sectionId } });
     } else {
+      // If element not found on the same page, try again shortly (e.g. after navigation/render)
       setTimeout(() => scrollToSection(sectionId), 120);
     }
     setIsMenuOpen(false);
   };
 
-  const handleNavClick = (sectionId) => {
+  const handleNavClick = (sectionId: string): void => {
     if (sectionId === "hero") {
       if (location.pathname !== "/") {
         navigate("/", { state: { scrollTo: "top" } });
@@ -90,14 +109,14 @@ export default function Navigation() {
     setIsMenuOpen(false);
   };
 
-  const goToLogin = () => {
+  const goToLogin = (): void => {
     navigate("/login", { state: { from: location.pathname } });
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     try {
-      const maybe = logout();
-      if (maybe && typeof maybe.then === "function") await maybe;
+      const maybe = logoutFn();
+      if (maybe instanceof Promise) await maybe;
       navigate("/");
     } catch (err) {
       console.error("Logout failed", err);
@@ -158,8 +177,6 @@ export default function Navigation() {
 
             {/* Auth & actions */}
             <div className="hidden md:flex items-center space-x-3">
-             
-
               {isAuthenticated ? (
                 <motion.div className="flex items-center space-x-3" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}>
                   <div className="text-sm text-slate-700">Welcome, <span className="font-medium text-slate-900">{displayName}</span></div>
