@@ -21,7 +21,7 @@ import { AuthContext } from "./login/AuthContext";
 const API_BASE: string =
   (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_BASE) ||
   (typeof process !== "undefined" && (process as any).env?.REACT_APP_API_BASE) ||
-  "http://localhost:8000";
+  "https://neural-network-1-ojx9.onrender.com/";
 
 const MAX_FILE_MB = 25;
 
@@ -219,10 +219,6 @@ const FileUploader: React.FC = () => {
   function humanFileSize(bytes: number) {
     const i = bytes === 0 ? 0 : Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${["B", "KB", "MB", "GB"][i]}`;
-  }
-
-  function isImageFile(file: File) {
-    return file.type.startsWith("image/") || /\.(jpe?g|png|gif)$/i.test(file.name);
   }
 
   /* Count FASTA sequences (used on selection so user can review before upload) */
@@ -519,8 +515,6 @@ const FileUploader: React.FC = () => {
   /* UI helpers */
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
-
-  const handleSelectButtonClick = () => inputRef.current?.click();
 
   const resetUpload = () => {
     if (polling) { abortPollingRef.current.abort = true; setPolling(false); }

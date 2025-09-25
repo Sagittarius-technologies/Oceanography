@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
 
 type LoginPayload = { name: string; email: string };
 
@@ -12,28 +13,70 @@ const LoginPage: React.FC<Props> = ({ onLogin, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // useGoogleLogin opens a popup and returns an access_token on success
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse: any) => {
+      try {
+        // tokenResponse.access_token is returned in implicit flow
+        const accessToken = tokenResponse?.access_token;
+        if (!accessToken) throw new Error('No access token from Google');
+
+        // Fetch profile from Google Userinfo endpoint
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch Google profile');
+
+        const profile = await res.json();
+        const name = profile.name || profile.email?.split('@')[0] || 'Google User';
+        onLogin({ name, email: profile.email });
+      } catch (err: any) {
+        console.error(err);
+        setError(err?.message || 'Google login failed');
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: (err) => {
+      console.error('Google login error', err);
+      setError('Google sign-in was cancelled or failed');
+      setLoading(false);
+    },
+    flow: 'implicit', // keep the popup implicit flow so we get an access_token
+    // If you need server-side tokens, use 'auth-code' and exchange code on server
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
 
-    // Simulate async login (replace with real API call)
-    setTimeout(() => {
+    try {
+      // Simulate async login (replace with your real API call)
+      await new Promise((res) => setTimeout(res, 700));
       const name = email.split('@')[0] || 'User';
       onLogin({ name: name.charAt(0).toUpperCase() + name.slice(1), email });
+    } catch (err: any) {
+      console.error(err);
+      setError('Sign-in failed');
+    } finally {
       setLoading(false);
-    }, 700);
+    }
   };
 
   const handleGoogle = () => {
+    setError(null);
     setLoading(true);
-    // Simulated Google sign-in
-    setTimeout(() => {
-      onLogin({ name: 'Google User', email: 'google.user@example.com' });
+    try {
+      loginWithGoogle(); // triggers popup; onSuccess/onError handle rest
+    } catch (err) {
+      console.error(err);
+      setError('Failed to start Google sign-in');
       setLoading(false);
-    }, 700);
+    }
   };
-  
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -125,6 +168,8 @@ const LoginPage: React.FC<Props> = ({ onLogin, onClose }) => {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
+
+          {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
 
           <div className="mt-4 flex items-center justify-between text-sm">
             <a href="#" className="text-slate-500 hover:text-slate-700">Forgot password?</a>
