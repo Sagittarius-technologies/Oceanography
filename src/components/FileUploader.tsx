@@ -21,7 +21,7 @@ import { AuthContext } from "./login/AuthContext";
 const API_BASE: string =
   (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_BASE) ||
   (typeof process !== "undefined" && (process as any).env?.REACT_APP_API_BASE) ||
-  "https://neural-network-1-ojx9.onrender.com/";
+  "http://localhost:8000";
 
 const MAX_FILE_MB = 25;
 
@@ -652,10 +652,34 @@ const FileUploader: React.FC = () => {
                       <p className="text-sm text-slate-500">Supports JPG, PNG for images, or FASTA / TXT for sequence data. Max {MAX_FILE_MB} MB.</p>
 
                       <div className="mt-4 flex gap-3 items-center">
-                        <Button onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }} className="px-4 py-2"><FileText className="w-4 h-4" /> Select</Button>
-                        <Button variant="outline" onClick={(e) => { e.stopPropagation(); if (!user) navigate('/login'); else setWarning("You are signed in"); }} className="px-3 py-2">
-                          {user ? "Signed in" : "Request access"}
-                        </Button>
+                        <Button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (!user) {
+                                    // show a friendly message and send user to login
+                                       setWarning("You must sign in to upload files");
+                                navigate("/login");
+                               return;
+                               }
+                             inputRef.current?.click();
+                            }}
+                            className={`px-4 py-2 ${!user ? "opacity-80 cursor-not-allowed" : ""}`}
+                              disabled={!user}
+                                   >
+                                  <FileText className="w-4 h-4" /> Select
+                           </Button>
+
+                           <Button
+                                 variant="outline"
+                                     onClick={(e) => {
+                                        e.stopPropagation();
+                                         if (!user) navigate("/login");
+                                         else setWarning("You are signed in");
+                                        }}
+                                        className="px-3 py-2"
+                                                       >
+                                               {user ? "Signed in" : "Request access"}
+                            </Button>
 
                         {selectedFile && <Button variant="outline" onClick={(e) => { e.stopPropagation(); resetUpload(); }} className="px-3 py-2"><Trash2 className="w-4 h-4" /> Clear</Button>}
                       </div>
